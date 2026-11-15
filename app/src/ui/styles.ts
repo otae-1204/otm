@@ -23,12 +23,24 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 /* 地图上的标注 */
 .otm-anno img { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
 .otm-anno:hover img { filter: drop-shadow(0 0 5px rgba(255,255,255,.55)) brightness(1.15); }
-.otm-cluster div {
-  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
-  background: rgba(22,26,32,.92); border: 1.5px solid var(--c, var(--muted)); color: var(--c, var(--muted));
-  font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,.6);
+/* 合并标注：图标 + 数量角标，后面两层错开的淡轮廓（v2-cluster.png） */
+.otm-stack { position: relative; }
+.otm-stack .st {
+  position: absolute; display: block; border: 1.5px solid var(--c);
+  background: rgba(22,26,32,.55);
 }
-.otm-cluster:hover div { background: rgba(34,40,49,.96); }
+.otm-stack .st2 { opacity: .35; }
+.otm-stack .st1 { opacity: .62; }
+.otm-stack .st0 { background: rgba(22,26,32,.9); }
+.otm-stack img { position: absolute; display: block; }
+.otm-stack .cnt {
+  position: absolute; display: block; border-radius: 999px; background: var(--c); color: #14171c;
+  font-weight: 700; text-align: center; letter-spacing: -.2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.55);
+}
+.otm-cluster { cursor: pointer; }
+.otm-cluster:hover .st0 { background: rgba(38,45,55,.95); }
+.otm-cluster:hover .cnt { filter: brightness(1.12); }
 .otm-me { position: relative; }
 .otm-me .arrow { position: absolute; inset: 0; display: grid; place-items: center; }
 .otm-me .arrow svg { fill: #fff; stroke: #14171c; stroke-width: 1.2; filter: drop-shadow(0 0 4px rgba(255,255,255,.5)); }
@@ -120,6 +132,13 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .card .pin { margin-left: auto; color: var(--accent); }
 .card .tagc { padding: 1px 8px; border-radius: 9px; background: rgba(255,255,255,.08); color: var(--text); font-size: 13px; }
 .card .close { position: absolute; right: 8px; top: 6px; color: var(--muted); font-size: 18px; line-height: 1; }
+
+/* 合并标注的悬停列表 */
+.ccluster { width: auto; min-width: 196px; padding: 8px 12px; }
+.ccluster .crow { display: flex; align-items: center; gap: 10px; height: 30px; font-size: 14px; }
+.ccluster .crow img { width: 20px; height: 20px; flex: none; }
+.ccluster .crow span { white-space: nowrap; }
+.ccluster .crow b { margin-left: auto; padding-left: 14px; color: var(--muted); font-weight: 500; }
 
 /* 设置面板 */
 .dim { position: absolute; inset: 0; background: rgba(8,10,13,.6); }

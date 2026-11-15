@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import type { AnnotationSet, CategoryId } from "../data/annotations";
-import { CATEGORY_NAMES, CATEGORY_ORDER } from "../data/annotations";
+import { CATEGORY_ICON, CATEGORY_NAMES, CATEGORY_ORDER } from "../data/annotations";
 import {
   activePreset,
   defaultFilters,
@@ -17,18 +17,6 @@ import {
   type FilterState,
 } from "../prefs";
 import { iconUrl } from "../map/icons";
-
-/** 大类在左侧列表里的图标。 */
-const CATEGORY_ICON: Record<CategoryId, string> = {
-  extract: "extract_shared",
-  transit: "extract_transit",
-  lock: "lock",
-  hazard: "hazard",
-  loot: "container_safe",
-  spawn: "spawn_pmc",
-  switch: "switch",
-  gun: "stationarygun",
-};
 
 export function PresetChips() {
   const prefs = usePrefs();

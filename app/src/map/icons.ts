@@ -22,13 +22,44 @@ export function annotationIcon(a: Annotation, size = 26): L.DivIcon {
   });
 }
 
-/** 合并圆：颜色跟着大类走（DESIGN 7.1），黄色只留给「当前目标」。 */
-export function clusterIcon(count: number, color: string): L.DivIcon {
+/**
+ * 合并标注（v2-cluster.png）：一个图标 + 右上角的数量角标，
+ * 图标后面两层错开的淡轮廓表示这里叠着好几个。颜色都取大类色。
+ */
+export function clusterIcon(opts: {
+  icon: string;
+  count: number;
+  color: string;
+  /** 图标图片的边长，和单个标注同一套缩放规则。 */
+  size: number;
+}): L.DivIcon {
+  const s = opts.size;
+  const pad = Math.max(2, Math.round(s * 0.14));
+  const frame = s + pad * 2;
+  const radius = Math.round(frame * 0.28);
+  const off = Math.max(3, Math.round(s * 0.22));
+  const bw = Math.max(1.5, Math.round(s * 0.07));
+  const bh = Math.max(16, Math.round(s * 0.72));
+  const fs = Math.max(11, Math.round(s * 0.48));
+  const w = frame + off * 2;
+  const h = frame + off;
+  const box = (left: number, top: number, cls: string) =>
+    `<span class="st ${cls}" style="left:${left}px;top:${top}px;width:${frame}px;height:${frame}px;border-radius:${radius}px;border-width:${bw}px"></span>`;
+  const html = `<div class="otm-stack" style="--c:${opts.color};width:${w}px;height:${h}px">${box(
+    off * 2,
+    0,
+    "st2",
+  )}${box(off, Math.round(off / 2), "st1")}${box(0, off, "st0")}<img src="${iconUrl(
+    opts.icon,
+  )}" width="${s}" height="${s}" style="left:${pad}px;top:${off + pad}px" alt="" draggable="false"/><b class="cnt" style="font-size:${fs}px;height:${bh}px;line-height:${bh}px;min-width:${bh}px;padding:0 ${Math.round(
+    bh * 0.24,
+  )}px;left:${Math.round(frame - bh * 0.5)}px;top:${Math.round(off - bh * 0.5)}px">${opts.count}</b></div>`;
   return L.divIcon({
     className: "otm-cluster",
-    html: `<div style="--c:${color}">${count}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
+    html,
+    iconSize: [w, h],
+    // 锚点对着最前面那层框的中心，也就是这一堆真正的位置
+    iconAnchor: [frame / 2, off + frame / 2],
   });
 }
 

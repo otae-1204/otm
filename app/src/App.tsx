@@ -15,6 +15,8 @@ import {
   useMapResolution,
 } from "./map/useMapData";
 import { AnnotationCard } from "./ui/AnnotationCard";
+import { ClusterCard } from "./ui/ClusterCard";
+import type { ClusterHover } from "./map/annotationsLayer";
 import { FilterPanel, PresetChips } from "./ui/FilterPanel";
 import { SettingsSheet } from "./ui/SettingsSheet";
 import { StatusBar } from "./ui/StatusBar";
@@ -45,6 +47,7 @@ export function App() {
 
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [picked, setPicked] = useState<{ a: Annotation; x: number; y: number } | null>(null);
+  const [hover, setHover] = useState<ClusterHover | null>(null);
   const [settings, setSettings] = useState(false);
   const [manualLayer, setManualLayer] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -87,8 +90,16 @@ export function App() {
   const onPick = useCallback((a: Annotation | null) => {
     setPicked((prev) => (a === null || prev?.a.key === a.key ? null : { a, x: 0, y: 0 }));
   }, []);
+  const onHover = useCallback((h: ClusterHover | null) => setHover(h), []);
 
-  const layers = useLeaflet({ container, meta, style: prefs.baseStyle, zh: data.zh, onPick });
+  const layers = useLeaflet({
+    container,
+    meta,
+    style: prefs.baseStyle,
+    zh: data.zh,
+    onPick,
+    onHover,
+  });
 
   // 卡片位置跟着地图走
   useEffect(() => {
@@ -118,8 +129,15 @@ export function App() {
   useEffect(() => {
     const map = layers.map;
     if (!map || !layers.annotations) return;
-    const draw = () =>
-      layers.annotations?.render(visible, map.getZoom(), layers.controller?.fitZoom() ?? map.getZoom());
+    const draw = () => {
+      setHover(null);
+      layers.annotations?.render(
+        visible,
+        map.getZoom(),
+        layers.controller?.fitZoom() ?? map.getZoom(),
+        prefs.clusterIcon,
+      );
+    };
     draw();
     layers.outlines?.render(visible);
     map.on("zoomend", draw);
@@ -128,7 +146,7 @@ export function App() {
       map.off("zoomend", draw);
       map.off("moveend", draw);
     };
-  }, [layers.map, layers.annotations, layers.outlines, layers.version, visible]);
+  }, [layers.map, layers.annotations, layers.outlines, layers.version, visible, prefs.clusterIcon]);
 
   // 自己与轨迹
   const trailOn = effectiveFilters(prefs).trail;
@@ -227,6 +245,7 @@ export function App() {
           onClose={() => setPicked(null)}
         />
       ) : null}
+      {hover ? <ClusterCard hover={hover} /> : null}
       {settings ? <SettingsSheet set={set} data={data} mock={mockHandle.current !== null} onClose={() => setSettings(false)} /> : null}
     </div>
   );

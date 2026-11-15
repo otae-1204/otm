@@ -63,6 +63,35 @@ export const CATEGORY_COLOR: Record<CategoryId, string> = {
   gun: "#7d8794",
 };
 
+/** 大类在列表和「统一图标」里用的图标（左侧筛选面板也是这一套）。 */
+export const CATEGORY_ICON: Record<CategoryId, string> = {
+  extract: "extract_shared",
+  transit: "extract_transit",
+  lock: "lock",
+  hazard: "hazard",
+  loot: "container_safe",
+  spawn: "spawn_pmc",
+  switch: "switch",
+  gun: "stationarygun",
+};
+
+/**
+ * 合并标注选「价值最高」时的顺序（暂定，按经验排的，以后可以按跳蚤价格改）。
+ * 键是容器的 normalizedName；不在表里的容器排在后面，按数量从多到少。
+ * 只对物资有意义，其他大类没有价值顺序，退回「数量最多」。
+ */
+export const LOOT_VALUE_ORDER: string[] = [
+  "safe",
+  "bank-safe",
+  "weapon-box",
+  "pc-block",
+  "medcase",
+  "medbag",
+  "jacket",
+  "duffle-bag",
+  "toolbox",
+];
+
 export const CATEGORY_NAMES: Record<CategoryId, string> = {
   extract: "撤离点",
   transit: "转移点",

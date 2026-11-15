@@ -6,7 +6,7 @@ import type { Annotation, AnnotationSet } from "../data/annotations";
 import { buildAnnotations, layerOfPoint } from "../data/annotations";
 import { dataStore, type DataBundle, type Translations, type UpstreamMap } from "../data/loader";
 import { findMapMeta, upstreamMapOf, type MapMeta } from "../data/mapsMeta";
-import { createAnnotationLayer, type AnnotationLayer } from "./annotationsLayer";
+import { createAnnotationLayer, type AnnotationLayer, type ClusterHover } from "./annotationsLayer";
 import { createMapController, type MapController } from "./leafletMap";
 import { createOutlineLayer, createPlayerLayer, type OutlineLayer, type PlayerLayer } from "./playerLayer";
 import { effectiveFilters, subVisible, type Prefs } from "../prefs";
@@ -98,6 +98,8 @@ export interface LeafletOptions {
   /** 中文翻译，用来给地名取中文名。 */
   zh: Translations | null;
   onPick: (a: Annotation | null) => void;
+  /** 鼠标停在合并标注上时，把这一堆的构成交给界面。 */
+  onHover: (h: ClusterHover | null) => void;
 }
 
 /**
@@ -109,6 +111,8 @@ export function useLeaflet(opts: LeafletOptions): MapLayers {
   const [layers, setLayers] = useState<MapLayers>(NO_LAYERS);
   const pickRef = useRef(opts.onPick);
   pickRef.current = opts.onPick;
+  const hoverRef = useRef(opts.onHover);
+  hoverRef.current = opts.onHover;
   const metaRef = useRef<MapMeta | null>(meta);
   metaRef.current = meta;
   const zhRef = useRef<Translations | null>(zh);
@@ -130,7 +134,11 @@ export function useLeaflet(opts: LeafletOptions): MapLayers {
     }
     // 点空白处收起卡片
     map.on("click", () => pickRef.current(null));
-    const annotations = createAnnotationLayer(map, (a) => pickRef.current(a));
+    const annotations = createAnnotationLayer(
+      map,
+      (a) => pickRef.current(a),
+      (h) => hoverRef.current(h),
+    );
     const outlines = createOutlineLayer(map);
     const player = createPlayerLayer(map);
     setLayers({ controller, map, annotations, outlines, player, version: controller.mapVersion() });

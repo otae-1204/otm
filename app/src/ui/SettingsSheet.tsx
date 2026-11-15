@@ -5,7 +5,15 @@ import type { AnnotationSet, CategoryId } from "../data/annotations";
 import { CATEGORY_NAMES, CATEGORY_ORDER } from "../data/annotations";
 import type { DataBundle } from "../data/loader";
 import { dataStore } from "../data/loader";
-import { activePreset, newPresetId, prefsStore, subKey, usePrefs, type FilterState } from "../prefs";
+import {
+  activePreset,
+  CLUSTER_ICON_MODES,
+  newPresetId,
+  prefsStore,
+  subKey,
+  usePrefs,
+  type FilterState,
+} from "../prefs";
 import { mockHandle } from "../events/mock";
 import { iconUrl } from "../map/icons";
 import { IconCaret } from "./icons";
@@ -21,7 +29,7 @@ const CATEGORY_ICON: Record<CategoryId, string> = {
   gun: "stationarygun",
 };
 
-type Tab = "presets" | "locate" | "data";
+type Tab = "presets" | "display" | "locate" | "data";
 
 export function SettingsSheet({
   set,
@@ -44,6 +52,9 @@ export function SettingsSheet({
           <button className={`tab${tab === "presets" ? " on" : ""}`} onClick={() => setTab("presets")}>
             预设
           </button>
+          <button className={`tab${tab === "display" ? " on" : ""}`} onClick={() => setTab("display")}>
+            显示
+          </button>
           <button className={`tab${tab === "locate" ? " on" : ""}`} onClick={() => setTab("locate")}>
             定位
           </button>
@@ -53,6 +64,7 @@ export function SettingsSheet({
         </div>
         <div className="sbody">
           {tab === "presets" ? <PresetEditor set={set} /> : null}
+          {tab === "display" ? <DisplayPanel /> : null}
           {tab === "locate" ? <LocatePanel /> : null}
           {tab === "data" ? <DataPanel data={data} mock={mock} /> : null}
         </div>
@@ -194,6 +206,27 @@ function PresetEditor({ set }: { set: AnnotationSet }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** 显示：合并标注里放哪个图标。 */
+function DisplayPanel() {
+  const prefs = usePrefs();
+  return (
+    <>
+      <div className="h">合并标注</div>
+      <div className="seg" style={{ width: "max-content" }}>
+        {CLUSTER_ICON_MODES.map((m) => (
+          <span
+            key={m.id}
+            className={prefs.clusterIcon === m.id ? "on" : ""}
+            onClick={() => prefsStore.update((p) => ({ ...p, clusterIcon: m.id }))}
+          >
+            {m.label}
+          </span>
+        ))}
+      </div>
+    </>
   );
 }
 

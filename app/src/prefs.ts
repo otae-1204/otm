@@ -25,6 +25,15 @@ export interface Preset {
   filters: FilterState;
 }
 
+/** 合并标注里放哪个图标。 */
+export type ClusterIconMode = "count" | "value" | "category";
+
+export const CLUSTER_ICON_MODES: { id: ClusterIconMode; label: string }[] = [
+  { id: "count", label: "数量最多" },
+  { id: "value", label: "价值最高" },
+  { id: "category", label: "统一图标" },
+];
+
 export interface Prefs {
   /** 存储格式版本，用来迁移旧数据。 */
   v: number;
@@ -39,6 +48,8 @@ export interface Prefs {
   staleSeconds: number;
   /** 假数据回放倍速。 */
   mockSpeed: number;
+  /** 合并标注里放哪个图标。 */
+  clusterIcon: ClusterIconMode;
 }
 
 export const ALL_CATEGORIES: CategoryId[] = [
@@ -101,12 +112,17 @@ function defaultPrefs(): Prefs {
     baseStyle: "svg",
     staleSeconds: 60,
     mockSpeed: 1,
+    clusterIcon: "count",
   };
 }
 
 const KEY = "otm.prefs";
-/** 2：做任务/跑刀的默认开关改过，旧数据升级时重置这两个内置预设。 */
-const VERSION = 2;
+/**
+ * 存储格式版本：
+ * 2：做任务/跑刀的默认开关改过，升级时重置这两个内置预设；
+ * 3：加了合并标注的图标选项。
+ */
+const VERSION = 3;
 
 /** 把任意存下来的预设整理成当前格式，认不出的字段丢掉。 */
 function normalizePreset(raw: unknown): Preset | null {
@@ -147,7 +163,7 @@ function load(): Prefs {
   const list = Array.isArray(stored.presets) ? stored.presets : [];
   let presets = list.map(normalizePreset).filter((x): x is Preset => x !== null);
 
-  if (oldVersion < VERSION) {
+  if (oldVersion < 2) {
     // 升级：内置的两个预设换成新的默认开关，用户自己建的预设原样保留。
     const fresh = new Map(d.presets.map((p) => [p.id, p]));
     presets = presets.map((p) => {
@@ -166,7 +182,7 @@ function load(): Prefs {
     presets,
     activePresetId,
     // 旧版的临时调整是按旧默认点出来的，升级时清掉，免得盖住新默认
-    overrides: oldVersion < VERSION ? {} : (stored.overrides ?? {}),
+    overrides: oldVersion < 2 ? {} : (stored.overrides ?? {}),
     manualMap: typeof stored.manualMap === "string" ? stored.manualMap : null,
     baseStyle: stored.baseStyle === "tile" ? "tile" : "svg",
     staleSeconds:
@@ -177,6 +193,10 @@ function load(): Prefs {
       typeof stored.mockSpeed === "number" && stored.mockSpeed >= 1 && stored.mockSpeed <= 20
         ? stored.mockSpeed
         : d.mockSpeed,
+    clusterIcon:
+      stored.clusterIcon === "value" || stored.clusterIcon === "category"
+        ? stored.clusterIcon
+        : d.clusterIcon,
   };
   if (oldVersion < VERSION) {
     // 迁移结果马上写回去，免得下次启动又按旧数据算一遍
