@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>otm mockup v2</title>
+<style>
+  :root {
+    --font: "Noto Sans CJK SC", "Noto Sans CJK JP", "DejaVu Sans", sans-serif;
+    --bg: #14171c; --land: #1b2027; --land2: #20262e; --forest: #1c2a24; --water: #17303f;
+    --road: #39414d; --bld: #2c343f; --bld-stroke: #465160;
+    --grid: rgba(255,255,255,.025);
+    --panel: rgba(22,26,32,.92); --panel2: rgba(255,255,255,.05); --line: rgba(255,255,255,.08);
+    --text: #dfe5ec; --muted: #8893a1; --accent: #ffd24a;
+    --c-extract: #3ddc84; --c-scav: #4da3ff; --c-key: #f5a524; --c-quest: #ff6ac1; --c-loot: #9d8cff; --c-boss: #ff5d5d; --c-spawn: #7d8794;
+    --me: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; font-family: var(--font); color: var(--text); background: var(--bg); }
+  svg text { font-family: var(--font); }
+  .win { position: absolute; inset: 0; }
+  .win svg.map { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .pill { background: var(--panel); border: 1px solid var(--line); }
+
+  .presets { position: absolute; top: 24px; left: 24px; display: flex; gap: 8px; }
+  .chip { height: 38px; padding: 0 16px; border-radius: 19px; display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); }
+  .chip.on { color: #14171c; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .filters { position: absolute; top: 78px; left: 24px; width: 236px; padding: 10px; border-radius: 14px; }
+  .frow { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 8px; border-radius: 8px; font-size: 16px; }
+  .frow.off { opacity: .35; }
+  .frow .n { margin-left: auto; color: var(--muted); font-size: 14px; }
+  .frow svg { width: 22px; height: 22px; flex: none; }
+  .sep { height: 1px; background: var(--line); margin: 8px 4px; }
+  .sw { margin-left: auto; width: 34px; height: 20px; border-radius: 10px; background: var(--accent); position: relative; }
+  .sw::after { content: ""; position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; border-radius: 50%; background: #14171c; }
+  .sw.off { background: rgba(255,255,255,.14); } .sw.off::after { right: auto; left: 3px; background: #8893a1; }
+
+  .tools { position: absolute; top: 24px; right: 24px; display: flex; gap: 8px; }
+  .ib { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+  .ib.on { color: #14171c; background: var(--accent); border-color: var(--accent); }
+  .ib svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .seg { display: flex; height: 38px; border-radius: 19px; padding: 3px; gap: 2px; font-size: 14px; }
+  .seg span { padding: 0 14px; border-radius: 16px; display: grid; place-items: center; color: var(--muted); }
+  .seg span.on { background: rgba(255,255,255,.12); color: var(--text); }
+
+  .floors { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 14px; }
+  .fl { width: 44px; height: 40px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; color: var(--muted); }
+  .fl.on { background: var(--accent); color: #14171c; font-weight: 700; }
+
+  .status { position: absolute; left: 24px; bottom: 24px; display: flex; gap: 14px; align-items: center; height: 38px; padding: 0 16px; border-radius: 19px; font-size: 15px; color: var(--muted); }
+  .status b { color: var(--text); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-extract); }
+  .next { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; gap: 12px; align-items: center; height: 44px; padding: 0 18px 0 8px; border-radius: 22px; font-size: 16px; }
+  .next .num { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #14171c; font-weight: 700; display: grid; place-items: center; font-size: 15px; }
+  .next .d { color: var(--accent); font-weight: 700; }
+  .next .rest { color: var(--muted); font-size: 14px; }
+
+  /* marker card */
+  .card { position: absolute; width: 250px; padding: 12px 14px; border-radius: 12px; font-size: 14px; }
+  .card h4 { margin: 0 0 6px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .card .meta { color: var(--muted); display: flex; gap: 10px; }
+  .card .pin { margin-left: auto; color: var(--accent); }
+  .tagc { padding: 1px 8px; border-radius: 9px; background: rgba(255,255,255,.08); color: var(--text); font-size: 13px; }
+
+  /* task panel */
+  .tasks { position: absolute; top: 78px; right: 92px; width: 348px; padding: 14px; border-radius: 14px; }
+  .prof { display: flex; gap: 6px; margin-bottom: 14px; }
+  .prof span { flex: 1; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; color: var(--muted); background: var(--panel2); }
+  .prof span.on { background: rgba(255,255,255,.14); color: var(--text); font-weight: 600; }
+  .h { font-size: 12px; color: var(--muted); letter-spacing: 1px; margin: 4px 2px 8px; }
+  .items { display: flex; gap: 8px; margin-bottom: 16px; }
+  .item { flex: 1; padding: 10px; border-radius: 10px; background: var(--panel2); font-size: 14px; }
+  .item i { display: block; width: 34px; height: 34px; border-radius: 6px; background: rgba(255,255,255,.08); margin-bottom: 8px; }
+  .item b { color: var(--accent); font-weight: 700; margin-left: 4px; }
+  .task { padding: 10px 12px; border-radius: 10px; background: var(--panel2); margin-bottom: 8px; }
+  .task .t { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+  .task .t small { margin-left: auto; color: var(--muted); font-weight: 400; font-size: 12px; }
+  .ob { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .ob.done { text-decoration: line-through; opacity: .5; }
+  .cb { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--muted); flex: none; }
+  .ob.done .cb { background: var(--c-extract); border-color: var(--c-extract); }
+  .ob .fl2 { margin-left: auto; font-size: 12px; }
+
+  /* settings */
+  .dim { position: absolute; inset: 0; background: rgba(8,10,13,.6); }
+  .sheet { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 900px; height: 620px; border-radius: 18px; display: flex; overflow: hidden; background: #171b21; border: 1px solid var(--line); box-shadow: 0 30px 90px rgba(0,0,0,.6); }
+  .tabs { width: 170px; padding: 18px 10px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+  .tab { height: 40px; padding: 0 14px; border-radius: 8px; display: flex; align-items: center; font-size: 15px; color: var(--muted); }
+  .tab.on { background: rgba(255,255,255,.08); color: var(--text); font-weight: 600; }
+  .body { flex: 1; padding: 22px 28px; }
+  .row { display: flex; align-items: center; height: 46px; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .row .r { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .key { min-width: 34px; height: 30px; padding: 0 10px; border-radius: 7px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); display: grid; place-items: center; font-size: 13px; }
+  .key.none { color: var(--muted); background: none; border-style: dashed; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 36px; }
+  .slider { width: 220px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); position: relative; }
+  .slider i { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: var(--accent); }
+  .slider b { position: absolute; top: -6px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transform: translateX(-8px); }
+  .val { width: 48px; text-align: right; color: var(--muted); font-size: 13px; }
+  .corner { width: 96px; height: 58px; border-radius: 8px; background: rgba(255,255,255,.06); position: relative; }
+  .corner i { position: absolute; width: 20px; height: 20px; border-radius: 5px; background: rgba(255,255,255,.14); }
+  .corner i.on { background: var(--accent); }
+  .note { margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+  .plist { width: 190px; padding-right: 18px; margin-right: 22px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+  .pi { height: 42px; padding: 0 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--muted); }
+  .pi.on { background: rgba(255,255,255,.08); color: var(--text); font-weight: 600; }
+  .pi .grip { width: 8px; height: 14px; background: radial-gradient(circle, currentColor 1px, transparent 1.5px) 0 0 / 4px 5px; opacity: .5; }
+  .pi .k { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--muted); }
+  .name { height: 40px; padding: 0 12px; border-radius: 8px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); display: flex; align-items: center; font-size: 16px; flex: 1; }
+  .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 18px; }
+  .cat { height: 44px; padding: 0 12px; border-radius: 10px; background: var(--panel2); display: flex; align-items: center; gap: 10px; font-size: 15px; }
+  .cat.off { opacity: .4; }
+  .del { color: var(--c-boss); font-size: 14px; }
+  .tree { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 16px; }
+  .g { border-radius: 10px; background: var(--panel2); }
+  .g.off .gh { opacity: .4; }
+  .gh { height: 40px; padding: 0 12px; display: flex; align-items: center; gap: 10px; font-size: 15px; }
+  .gh .cnt { color: var(--muted); font-size: 12px; margin-left: 4px; }
+  .gh .car { color: var(--muted); font-size: 12px; }
+  .subs { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 12px 12px 46px; }
+  .sc { height: 28px; padding: 0 12px; border-radius: 14px; display: grid; place-items: center; font-size: 13px; color: var(--muted); border: 1px solid rgba(255,255,255,.12); }
+  .sc.on { color: #14171c; background: var(--c-loot); border-color: var(--c-loot); font-weight: 600; }
+  .sheet.tall { height: 860px; }
+  .board { position: absolute; inset: 0; padding: 70px 90px; display: flex; gap: 110px; }
+  .col { display: flex; flex-direction: column; gap: 26px; }
+  .cap { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+  .st { display: inline-flex; gap: 14px; align-items: center; height: 38px; padding: 0 16px; border-radius: 19px; font-size: 15px; color: var(--muted); }
+  .st b { color: var(--text); font-weight: 600; }
+  .st .dot { flex: none; }
+  .st svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ring { box-shadow: 0 0 0 5px rgba(255,210,74,.25); }
+  .mm { width: 300px; height: 300px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); position: relative; }
+  .mm svg { width: 100%; height: 100%; display: block; }
+  .keycap { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 76px; height: 68px; border-radius: 14px; background: rgba(20,23,28,.85); border: 2px solid var(--accent); box-shadow: 0 0 0 8px rgba(255,210,74,.18); display: grid; place-items: center; color: var(--accent); }
+  .keycap svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .mapchips { display: flex; flex-wrap: wrap; gap: 6px; width: 430px; padding: 10px; border-radius: 14px; margin-top: 8px; }
+  .mapchips span { height: 32px; padding: 0 12px; border-radius: 8px; display: grid; place-items: center; font-size: 14px; background: var(--panel2); color: var(--text); }
+  .path { font-size: 13px; color: var(--muted); margin-right: 6px; }
+  .pcs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .pc { padding: 16px; border-radius: 12px; background: var(--panel2); border: 1px solid transparent; }
+  .pc.on { border-color: var(--accent); }
+  .pn { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .pm { font-size: 13px; color: var(--muted); margin: 6px 0 14px; }
+  .pnum { font-size: 13px; color: var(--muted); } .pnum b { font-size: 20px; color: var(--text); margin-right: 5px; }
+  .menu { position: absolute; width: 196px; padding: 6px; border-radius: 12px; }
+  .mi { height: 38px; padding: 0 10px; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-size: 15px; }
+  .mi.on { background: rgba(255,255,255,.08); }
+  .mi svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; color: var(--muted); }
+  .ed { position: absolute; width: 268px; padding: 14px; border-radius: 14px; }
+  .ed .name { margin-bottom: 14px; }
+  .dots { display: flex; gap: 10px; margin-bottom: 14px; }
+  .dots i { width: 26px; height: 26px; border-radius: 50%; }
+  .dots i.on { box-shadow: 0 0 0 2px #171b21, 0 0 0 4px #fff; }
+  .shapes { display: flex; gap: 8px; margin-bottom: 14px; }
+  .shapes span { width: 38px; height: 38px; border-radius: 9px; background: var(--panel2); display: grid; place-items: center; }
+  .shapes span.on { background: rgba(255,255,255,.16); }
+  .edf { display: flex; align-items: center; gap: 8px; }
+  .ok { margin-left: auto; width: 38px; height: 32px; border-radius: 8px; background: var(--accent); color: #14171c; display: grid; place-items: center; font-weight: 700; }
+  .tv { position: absolute; inset: 0; background: var(--bg); }
+  .tvhead { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; gap: 10px; align-items: center; }
+  .side { position: absolute; top: 78px; left: 24px; bottom: 24px; width: 318px; padding: 14px; border-radius: 14px; overflow: hidden; }
+  .goal { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px; }
+  .goal span { height: 34px; border-radius: 8px; display: grid; place-items: center; font-size: 14px; color: var(--muted); background: var(--panel2); }
+  .goal span.on { background: var(--accent); color: #14171c; font-weight: 700; }
+  .prog { height: 6px; border-radius: 3px; background: rgba(255,255,255,.1); margin: 4px 0 6px; overflow: hidden; } .prog i { display: block; height: 100%; background: var(--accent); }
+  .pt { display: flex; font-size: 13px; color: var(--muted); margin-bottom: 16px; } .pt b { margin-left: auto; color: var(--text); }
+  .raid { padding: 10px 12px; border-radius: 10px; background: var(--panel2); margin-bottom: 8px; }
+  .raid.first { background: rgba(255,210,74,.1); border: 1px solid rgba(255,210,74,.5); }
+  .rh { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+  .rh .num { width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,.12); display: grid; place-items: center; font-size: 13px; }
+  .raid.first .num { background: var(--accent); color: #14171c; }
+  .rt { font-size: 13.5px; color: var(--text); line-height: 1.75; } .rt em { font-style: normal; color: var(--muted); }
+  .canvas { position: absolute; top: 78px; left: 358px; right: 24px; bottom: 24px; border-radius: 14px; overflow: hidden; background: #171b21; border: 1px solid var(--line); }
+  .canvas svg { position: absolute; left: 0; top: 0; }
+  .legend { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 14px; padding: 8px 14px; border-radius: 10px; font-size: 13px; color: var(--muted); align-items: center; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }
+  .drawer { position: absolute; top: 24px; right: 24px; bottom: 24px; width: 476px; border-radius: 16px; background: #171b21; border: 1px solid var(--line); box-shadow: -20px 0 60px rgba(0,0,0,.45); padding: 20px 22px; overflow: hidden; }
+  .dh { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .back { width: 34px; height: 34px; border-radius: 50%; background: var(--panel2); display: grid; place-items: center; color: var(--muted); font-size: 20px; flex: none; }
+  .dh img { width: 56px; height: 56px; border-radius: 10px; background: #0f1216; flex: none; object-fit: contain; }
+  .dh .tt { font-size: 21px; font-weight: 700; } .dh .st2 { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .dh .act { margin-left: auto; display: flex; gap: 8px; }
+  .abtn { height: 34px; padding: 0 14px; border-radius: 17px; background: var(--accent); color: #14171c; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .abtn.g { background: var(--panel2); color: var(--text); font-weight: 400; }
+  .kv { display: flex; align-items: center; min-height: 42px; font-size: 14.500px; border-bottom: 1px solid rgba(255,255,255,.05); gap: 8px; }
+  .kv .k { color: var(--muted); width: 84px; flex: none; }
+  .mc { padding: 3px 11px; border-radius: 12px; background: var(--panel2); font-size: 13px; color: var(--muted); }
+  .mc.on { background: rgba(255,255,255,.16); color: var(--text); }
+  .cnt2 { margin-left: auto; display: flex; align-items: center; gap: 10px; } .cnt2 i { width: 26px; height: 26px; border-radius: 50%; background: var(--panel2); display: grid; place-items: center; font-style: normal; color: var(--muted); }
+  .dsec { font-size: 12px; color: var(--muted); letter-spacing: 1px; margin: 18px 0 10px; display: flex; } .dsec b { margin-left: auto; font-weight: 400; }
+  .pt2 { display: flex; gap: 12px; padding: 9px; border-radius: 10px; margin-bottom: 6px; }
+  .pt2.on { background: var(--panel2); }
+  .ph { width: 104px; height: 68px; border-radius: 8px; flex: none; background: linear-gradient(135deg, #2a323c, #20262e); display: grid; place-items: center; color: #4b5563; }
+  .ph.phb { width: 100%; height: 232px; margin: 4px 0 10px; border-radius: 10px; }
+  .ph svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.600; stroke-linejoin: round; }
+  .pd { font-size: 14px; line-height: 1.5; } .pm2 { display: flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 12.500px; color: var(--muted); }
+  .ob2 { display: flex; gap: 12px; padding: 10px 9px; border-radius: 10px; font-size: 14.500px; align-items: flex-start; }
+  .ob2.on { background: var(--panel2); } .ob2 .cb { margin-top: 3px; } .ob2.done { color: var(--muted); text-decoration: line-through; } .ob2.done .cb { background: var(--c-extract); border-color: var(--c-extract); }
+  .ob2 .loc { margin-left: auto; color: var(--accent); flex: none; }
+  .its { display: flex; gap: 8px; flex-wrap: wrap; }
+  .it { display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 10px; background: var(--panel2); font-size: 13.500px; }
+  .it img { width: 34px; height: 34px; border-radius: 6px; background: #0f1216; object-fit: contain; } .it b { color: var(--accent); }
+  .ovd { position: absolute; top: 360px; right: 28px; width: 320px; border-radius: 16px; overflow: hidden; background: rgba(20,23,28,.9); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+  .ovd .ph { width: 100%; height: 180px; border-radius: 0; }
+  .ovd .bd { padding: 12px 14px 14px; }
+  .ovd .t1 { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
+  .ovd .t1 .num { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #14171c; display: grid; place-items: center; font-size: 13px; }
+  .ovd .t1 b { margin-left: auto; color: var(--accent); }
+  .ovd .t2 { font-size: 14px; color: #dfe5ec; margin-top: 8px; line-height: 1.5; }
+  .ovd .t3 { display: flex; gap: 8px; margin-top: 8px; font-size: 12.500px; color: var(--muted); align-items: center; }
+  /* fake game */
+  .game { position: absolute; inset: 0; background:
+      radial-gradient(ellipse at 50% 120%, rgba(0,0,0,0) 40%, rgba(0,0,0,.55) 100%),
+      linear-gradient(#6f7d86 0%, #9aa39c 38%, #6c6f5c 47%, #3f4435 60%, #23271f 100%); }
+  .game svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hud { position: absolute; left: 40px; bottom: 36px; display: flex; flex-direction: column; gap: 6px; }
+  .bar { width: 200px; height: 6px; background: rgba(0,0,0,.45); } .bar i { display: block; height: 100%; background: rgba(230,230,220,.75); }
+  .ammo { position: absolute; right: 44px; bottom: 34px; font-size: 22px; color: rgba(235,235,225,.8); }
+
+  .mini { position: absolute; top: 28px; right: 28px; width: 320px; height: 320px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 8px 30px rgba(0,0,0,.45); opacity: .92; }
+  .mini svg, .big svg { width: 100%; height: 100%; display: block; }
+  .tag { position: absolute; font-size: 13px; padding: 2px 8px; border-radius: 9px; background: rgba(0,0,0,.6); color: #e8ecef; }
+  .edge { position: absolute; display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; padding: 2px 4px 2px 8px; border-radius: 10px; background: rgba(0,0,0,.6); }
+  .big { position: absolute; left: 50%; top: 50%; width: 1320px; height: 825px; transform: translate(-50%,-50%); border-radius: 22px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 20px 80px rgba(0,0,0,.6); opacity: .94; }
+</style>
+</head>
+<body>
+<script src="tasktree-data.js"></script>
+<script>
+const q = new URLSearchParams(location.search);
+const scene = q.get('scene') || 'main';
+const ME = { x: 820, y: 560, h: 40 };
+
+function glyph(type, r, o = {}) {
+  const c = `var(--c-${o.color || type})`, ink = 'rgba(0,0,0,.75)', sw = r * .14, st = 'rgba(0,0,0,.55)';
+  let s = '';
+  switch (type) {
+    case 'extract':
+      s = `<circle r="${r}" fill="${c}" stroke="${st}" stroke-width="${sw}"/><path d="M${-r*.45} 0H${r*.4}M${r*.05} ${-r*.38}L${r*.45} 0L${r*.05} ${r*.38}" fill="none" stroke="${ink}" stroke-width="${r*.24}" stroke-linecap="round" stroke-linejoin="round"/>`; break;
+    case 'key':
+      s = `<rect x="${-r*.9}" y="${-r*.9}" width="${r*1.8}" height="${r*1.8}" rx="${r*.3}" transform="rotate(45)" fill="${c}" stroke="${st}" stroke-width="${sw}"/><circle cx="${-r*.25}" r="${r*.26}" fill="none" stroke="${ink}" stroke-width="${r*.2}"/><path d="M0 0H${r*.55}M${r*.38} 0V${r*.28}" fill="none" stroke="${ink}" stroke-width="${r*.2}" stroke-linecap="round"/>`; break;
+    case 'quest':
+      s = `<path d="M0 ${-r*1.1}L${r*.95} ${-r*.55}V${r*.55}L0 ${r*1.1}L${-r*.95} ${r*.55}V${-r*.55}Z" fill="${c}" stroke="${st}" stroke-width="${sw}" stroke-linejoin="round"/><path d="M0 ${-r*.5}V${r*.1}" stroke="${ink}" stroke-width="${r*.26}" stroke-linecap="round"/><circle cy="${r*.48}" r="${r*.15}" fill="${ink}"/>`; break;
+    case 'loot':
+      s = `<rect x="${-r*.85}" y="${-r*.85}" width="${r*1.7}" height="${r*1.7}" rx="${r*.25}" fill="${c}" stroke="${st}" stroke-width="${sw}"/><path d="M${-r*.45} ${-r*.1}H${r*.45}M0 ${-r*.1}V${r*.2}" stroke="${ink}" stroke-width="${r*.2}" stroke-linecap="round"/>`; break;
+    case 'boss':
+      s = `<path d="M0 ${-r*1.15}L${r*1.1} ${r*.8}H${-r*1.1}Z" fill="${c}" stroke="${st}" stroke-width="${sw}" stroke-linejoin="round"/><circle cy="${r*.2}" r="${r*.22}" fill="${ink}"/>`; break;
+    default:
+      s = `<circle r="${r*.5}" fill="${c}" opacity=".8"/>`;
+  }
+  if (o.badge) {
+    const b = r * .62, bx = r * .85, by = -r * .85;
+    s += `<g transform="translate(${bx} ${by})"><circle r="${b}" fill="#14171c" stroke="${c}" stroke-width="${r*.12}"/>`;
+    if (o.badge === 'rub') s += `<text y="${b*.5}" text-anchor="middle" font-size="${b*1.35}" font-weight="700" fill="#fff" style="font-family:'DejaVu Sans',sans-serif">₽</text>`;
+    if (o.badge === 'power') s += `<path d="M${b*.15} ${-b*.6}L${-b*.35} ${b*.1}H${b*.05}L${-b*.15} ${b*.6}L${b*.4} ${-b*.1}H0Z" fill="#fff"/>`;
+    s += `</g>`;
+  }
+  if (o.num) {
+    const b = r * .62;
+    s += `<g transform="translate(${r*.85} ${-r*.85})"><circle r="${b}" fill="var(--accent)"/><text y="${b*.45}" text-anchor="middle" font-size="${b*1.3}" font-weight="700" fill="#14171c">${o.num}</text></g>`;
+  }
+  return s;
+}
+
+// type, x, y, opts
+const MARKERS = [
+  ['extract', 140, 470, {}], ['extract', 1480, 250, { badge: 'rub' }], ['extract', 1390, 880, { num: 3 }], ['extract', 610, 110, { badge: 'power' }],
+  ['extract', 300, 880, { color: 'scav' }], ['extract', 1300, 130, { color: 'scav' }],
+  ['key', 700, 470, {}], ['key', 905, 430, {}], ['key', 1010, 610, {}], ['key', 1210, 330, {}], ['key', 380, 720, {}],
+  ['quest', 960, 500, { num: 1, focus: 1 }], ['quest', 1150, 700, { num: 2 }], ['quest', 470, 300, {}], ['quest', 730, 760, {}],
+  ['boss', 985, 395, {}],
+];
+const ROUTE = 'M820 560L900 520L960 500L990 600L1040 640L1150 700L1180 720L1390 880';
+const TRAIL = [[440, 470], [560, 400], [640, 400], [700, 470], [760, 520], [820, 560]];
+
+function mapBody(opt = {}) {
+  const { r = 13, rot = 0, route = true } = opt;
+  const up = rot ? ` rotate(${rot})` : '';
+  let s = `<defs><pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M80 0H0V80" fill="none" stroke="var(--grid)" stroke-width="1"/></pattern>
+    <radialGradient id="cone" cx="0" cy="0" r="1" gradientUnits="objectBoundingBox" gradientTransform="translate(.5 1)"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>`;
+  s += `<rect x="-800" y="-800" width="3200" height="2600" fill="var(--bg)"/>`;
+  s += `<path d="M60 120C260 40 520 60 760 50S1300 30 1540 130C1600 330 1580 620 1560 880C1300 960 980 970 700 960S220 960 70 900C20 660 30 330 60 120Z" fill="var(--land)"/>`;
+  s += `<path d="M420 200C640 150 980 160 1240 220C1340 400 1330 640 1260 800C980 860 620 850 400 790C330 600 340 380 420 200Z" fill="var(--land2)"/>`;
+  s += `<rect x="-800" y="-800" width="3200" height="2600" fill="url(#grid)"/>`;
+  for (const [cx, cy, rx, ry] of [[230, 330, 130, 90], [300, 640, 150, 110], [1420, 420, 110, 150], [1380, 740, 130, 90], [760, 880, 190, 55], [820, 140, 220, 50]])
+    s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="var(--forest)"/>`;
+  s += `<path d="M-60 560C160 590 250 520 400 560S560 700 640 800S690 960 700 1100" fill="none" stroke="var(--water)" stroke-width="46" stroke-linecap="round"/>`;
+  const road = d => `<path d="${d}" fill="none" stroke="var(--road)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`;
+  s += road('M40 470H420L560 400H1240L1400 300L1560 250') + road('M610 60V400') + road('M1040 400V640L1180 720L1400 880') + road('M560 400V640H1040') + road('M800 640V940');
+  s += `<rect x="330" y="455" width="120" height="30" fill="var(--road)"/>`;
+  const B = [[640, 430, 130, 80], [660, 520, 90, 90], [1080, 430, 110, 70], [1090, 520, 70, 100], [1200, 290, 120, 70], [1230, 520, 90, 90],
+             [440, 270, 90, 70], [340, 690, 110, 70], [690, 720, 90, 80], [1110, 670, 100, 60], [1290, 390, 80, 60], [280, 400, 80, 50], [520, 800, 90, 60]];
+  for (const [x, y, w, h] of B) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="var(--bld)" stroke="var(--bld-stroke)" stroke-width="1.5"/>`;
+  s += `<path d="M830 340H1020V460H960V600H830Z" fill="var(--bld)" stroke="var(--bld-stroke)" stroke-width="2.1"/>`;
+  s += `<path d="M830 400H1020M890 340V600M830 470H960M830 535H960M955 400V460" fill="none" stroke="var(--bld-stroke)" stroke-width="1.2" opacity=".7"/>`;
+  // trail
+  if (opt.me !== 'none') s += `<polyline points="${TRAIL.map(p => p.join(',')).join(' ')}" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="3" stroke-linejoin="round"/>`;
+  if (opt.me !== 'none') for (const [x, y] of TRAIL.slice(0, -1)) s += `<circle cx="${x}" cy="${y}" r="4" fill="#fff" fill-opacity=".45"/>`;
+  // route
+  if (route) s += `<path d="${ROUTE}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-dasharray="2 10" stroke-linecap="round" stroke-linejoin="round"/>`;
+  for (const [t, x, y, o] of MARKERS) {
+    if (o.focus) s += `<circle cx="${x}" cy="${y}" r="${r * 2.1}" fill="none" stroke="var(--accent)" stroke-width="2" opacity=".7"/>`;
+    s += `<g transform="translate(${x} ${y})${up}">${glyph(t, r, o)}</g>`;
+  }
+  s += `<g transform="translate(1120 250)${up}"><circle r="${r * 1.35}" fill="var(--c-key)" fill-opacity=".22" stroke="var(--c-key)" stroke-width="${r * .16}"/><text y="${r * .42}" text-anchor="middle" font-size="${r * 1.15}" font-weight="700" fill="var(--c-key)">3</text></g>`;
+  s += opt.extra || '';
+  if (opt.me !== 'none') {
+    const stale = opt.me === 'stale', v = opt.v || 'a';
+    const arrow = (fill, stroke, sw) => `<path d="M0 ${-r * 1.5}L${r * 1.05} ${r * 1.1}L0 ${r * .5}L${-r * 1.05} ${r * 1.1}Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+    s += `<g transform="translate(${ME.x} ${ME.y}) rotate(${ME.h})">`;
+    if (!stale) s += `<path d="M0 0L-150 -260A300 300 0 0 1 150 -260Z" fill="url(#cone)"/><circle r="${r * 1.5}" fill="#fff" opacity=".16"/>` + arrow('#fff', 'rgba(0,0,0,.6)', r * .14);
+    else if (v === 'a') s += `<circle r="${r * 2.3}" fill="rgba(255,210,74,.18)" stroke="var(--accent)" stroke-width="${r * .22}" stroke-dasharray="${r * .5} ${r * .45}"/>` + arrow('var(--accent)', 'rgba(0,0,0,.7)', r * .16);
+    else if (v === 'b') s += `<circle r="${r * 2.1}" fill="rgba(20,23,28,.6)"/>` + arrow('none', 'var(--accent)', r * .3);
+    else if (v === 'c' || v === 'e' || v === 'f') s += arrow('var(--accent)', 'rgba(0,0,0,.7)', r * .16);
+    else s += arrow('var(--accent)', 'rgba(0,0,0,.7)', r * .16);
+    s += `</g>`;
+    if (stale && (v === 'c' || v === 'e' || v === 'f')) { const ic = v === 'e' || v === 'f'; const w = ic ? r * 5.5 : r * 3.9, tx = ic ? r * 3.55 : r * 1.95;
+      s += `<g transform="translate(${ME.x} ${ME.y}) rotate(${opt.rot || 0}) translate(${r * 1.9} ${-r * 1.1}) scale(${v === 'f' ? 1.55 : 1})"><rect x="0" y="${-r * .95}" width="${w}" height="${r * 1.9}" rx="${r * .95}" fill="var(--accent)"/>${ic ? `<g transform="translate(${r * .55} ${-r * .62}) scale(${r * 1.25 / 24})" fill="none" stroke="#14171c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.500-2.500h7L17 8h3v11H4z"/><circle cx="12" cy="13.200" r="3.300"/></g>` : ''}<text x="${tx}" y="${r * .45}" text-anchor="middle" font-size="${r * 1.25}" font-weight="700" fill="#14171c">3:12</text></g>`; }
+  }
+  return s;
+}
+
+const icon = (t, o) => `<svg width="24" height="24" style="flex:none" viewBox="-14 -14 28 28">${glyph(t, 10, o)}</svg>`;
+const I = {
+  layers: '<svg viewBox="0 0 24 24"><path d="M12 3L3 8l9 5 9-5-9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5" transform="scale(.9) translate(1.3 0)"/></svg>',
+  list: '<svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>',
+  gear: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.500C5 14.800 12 21 12 21z"/><circle cx="12" cy="9.500" r="2.500"/></svg>',
+};
+
+function chrome(o = {}) {
+  return `
+    <div class="presets"><div class="chip on">做任务</div><div class="chip">跑刀</div><div class="chip">＋</div></div>
+    <div class="filters pill">
+      <div class="frow">${icon('extract')}撤离点<span class="n">6</span></div>
+      <div class="frow">${icon('quest')}任务<span class="n">4</span></div>
+      <div class="frow">${icon('key')}钥匙房<span class="n">9</span></div>
+      <div class="frow">${icon('boss')}Boss<span class="n">1</span></div>
+      <div class="frow off">${icon('loot')}物资<span class="n">14</span></div>
+      <div class="frow off">${icon('spawn')}出生点<span class="n">11</span></div>
+      <div class="sep"></div>
+      <div class="frow">仅当前任务<span class="sw"></span></div>
+      <div class="frow">路线<span class="sw"></span></div>
+      <div class="frow">轨迹<span class="sw"></span></div>
+    </div>
+    <div class="tools">
+      <div class="seg pill"><span class="on">矢量</span><span>实景</span></div>
+      <div class="ib pill ${o.tasks ? 'on' : ''}">${I.list}</div>
+      <div class="ib pill ${o.settings ? 'on' : ''}">${I.gear}</div>
+    </div>
+    <div class="floors pill"><div class="fl">3F</div><div class="fl on">2F</div><div class="fl">1F</div><div class="fl">B1</div></div>
+    <div class="status pill"><span class="dot"></span><b>示意地图</b><span>2F</span><span>12:41</span><span>PVP</span></div>`;
+}
+
+function gameBackdrop() {
+  return `<div class="game"><svg viewBox="0 0 1920 1080" preserveAspectRatio="none">
+    <path d="M0 520L180 470L260 500L420 430L600 505L760 460L900 500L1100 440L1300 500L1500 450L1700 500L1920 465V560H0Z" fill="#59604f"/>
+    <rect x="240" y="380" width="230" height="170" fill="#3d4238"/><rect x="270" y="410" width="34" height="40" fill="#22261f"/><rect x="340" y="410" width="34" height="40" fill="#22261f"/><rect x="410" y="410" width="34" height="40" fill="#22261f"/>
+    <rect x="1250" y="330" width="330" height="230" fill="#353a31"/><rect x="1290" y="370" width="40" height="50" fill="#1f231c"/><rect x="1370" y="370" width="40" height="50" fill="#1f231c"/><rect x="1450" y="370" width="40" height="50" fill="#1f231c"/><rect x="1290" y="450" width="40" height="50" fill="#1f231c"/><rect x="1450" y="450" width="40" height="50" fill="#1f231c"/>
+    <path d="M820 560L900 540H1020L1100 560L1500 1080H420Z" fill="#33372d"/>
+    <g fill="#1e231b"><path d="M90 560L130 300L170 560Z"/><path d="M620 560L655 360L690 560Z"/><path d="M1680 560L1730 280L1780 560Z"/><path d="M1120 560L1150 400L1180 560Z"/></g>
+    <path d="M1180 1080L1320 760L1420 720L1560 760L1920 900V1080Z" fill="#14160f"/><rect x="1330" y="700" width="150" height="34" rx="6" transform="rotate(-18 1330 700)" fill="#0d0f0a"/>
+  </svg><div class="hud"><div class="bar"><i style="width:82%"></i></div><div class="bar"><i style="width:56%"></i></div></div><div class="ammo">30 / 90</div></div>`;
+}
+
+const MAPSVG = `<svg class="map" viewBox="20 -10 1600 900" preserveAspectRatio="xMidYMid slice">${mapBody({ r: 12 })}</svg>`;
+let html = '';
+
+if (scene === 'main') {
+  html = `<div class="win">${MAPSVG}${chrome()}
+    <div class="card pill" style="left:1486px;top:346px">
+      <h4>${icon('extract', { badge: 'rub' })}东侧检查站<span class="pin">${I.pin}</span></h4>
+      <div class="meta"><span class="tagc">PMC</span><span class="tagc">₽ 5000</span><span>1F</span><span>640m</span></div>
+    </div>
+    <div class="next pill"><span class="num">1</span>放置信标<span class="d">186m</span><span class="rest">之后 2 个 · 撤离 1.1km</span></div>
+  </div>`;
+} else if (scene === 'tasks') {
+  html = `<div class="win">${MAPSVG}${chrome({ tasks: 1 })}
+    <div class="tasks pill">
+      <div class="prof"><span class="on">PVP</span><span>PVE</span><span>PVPS</span></div>
+      <div class="h">本图携带</div>
+      <div class="items"><div class="item"><i></i>信标<b>×2</b></div><div class="item"><i></i>房间钥匙<b>×1</b></div><div class="item"><i></i>急救包<b>×3</b></div></div>
+      <div class="h">本图任务 · 3</div>
+      <div class="task"><div class="t">${icon('quest', { num: 1 })}布设信号<small>商人甲</small></div>
+        <div class="ob done"><span class="cb"></span>找到货车<span class="fl2">1F</span></div>
+        <div class="ob"><span class="cb"></span>放置信标<span class="fl2">2F</span></div>
+        <div class="ob"><span class="cb"></span>放置信标<span class="fl2">1F</span></div></div>
+      <div class="task"><div class="t">${icon('quest', { num: 2 })}医疗补给<small>商人乙</small></div>
+        <div class="ob"><span class="cb"></span>上交急救包 ×3<span class="fl2">1F</span></div></div>
+      <div class="task"><div class="t">${icon('quest')}上锁的办公室<small>商人甲</small></div>
+        <div class="ob"><span class="cb"></span>取得文件<span class="fl2">3F</span></div>
+        <div class="ob"><span class="cb"></span>存活并撤离</div></div>
+      <div class="h" style="margin-top:14px">其他地图 · 7</div>
+    </div>
+  </div>`;
+} else if (['keys', 'overlay', 'presets', 'loc', 'data', 'prof'].includes(scene)) {
+  const keys = `<div class="cols">
+      <div><div class="h">地图</div>
+        ${[['显示 / 隐藏', 'F6'], ['展开', '按住', 'Caps'], ['放大', '='], ['缩小', '-'], ['上一层', 'PgUp'], ['下一层', 'PgDn'], ['朝向 / 朝北', 'F7'], ['接管鼠标', '按住', 'F8'], ['切换底图', null]]
+          .map(([a, ...k]) => `<div class="row">${a}<span class="r">${k.map(x => x === null ? '<span class="key none">＋</span>' : x === '按住' ? '<span style="color:var(--muted);font-size:12px">按住</span>' : `<span class="key">${x}</span>`).join('')}</span></div>`).join('')}</div>
+      <div><div class="h">预设</div>
+        ${[['轮换', 'F5'], ['做任务', 'Alt', '1'], ['跑刀', 'Alt', '2']].map(([a, ...k]) => `<div class="row">${a}<span class="r">${k.map(x => `<span class="key">${x}</span>`).join('')}</span></div>`).join('')}
+        <div class="h" style="margin-top:22px">目标</div>
+        ${[['钉住最近撤离点', 'F9'], ['下一个目标', 'F10'], ['取消钉住', null]].map(([a, ...k]) => `<div class="row">${a}<span class="r">${k.map(x => x === null ? '<span class="key none">＋</span>' : `<span class="key">${x}</span>`).join('')}</span></div>`).join('')}</div>
+    </div>`;
+  const ov = `
+      <div class="row">启用<span class="r"><span class="sw"></span></span></div>
+      <div class="row" style="height:76px">位置<span class="r"><div class="corner"><i style="left:6px;top:6px"></i><i class="on" style="right:6px;top:6px"></i><i style="left:6px;bottom:6px"></i><i style="right:6px;bottom:6px"></i></div></span></div>
+      <div class="row">大小<span class="r"><div class="slider"><i style="width:45%"></i><b style="left:45%"></b></div><span class="val">320</span></span></div>
+      <div class="row">不透明度<span class="r"><div class="slider"><i style="width:90%"></i><b style="left:90%"></b></div><span class="val">90%</span></span></div>
+      <div class="row">视野范围<span class="r"><div class="slider"><i style="width:35%"></i><b style="left:35%"></b></div><span class="val">150m</span></span></div>
+      <div class="row">形状<span class="r"><div class="seg pill" style="height:32px"><span class="on">方</span><span>圆</span></div></span></div>
+      <div class="row">朝向<span class="r"><div class="seg pill" style="height:32px"><span class="on">跟随</span><span>朝北</span></div></span></div>
+      <div class="row">对局外隐藏<span class="r"><span class="sw"></span></span></div>
+      <div class="note">置顶窗口，不读取游戏。官方未表态。</div>`;
+  const cat = (t, n, on, o) => `<div class="cat ${on ? '' : 'off'}">${icon(t, o)}${n}<span class="sw ${on ? '' : 'off'}"></span></div>`;
+  const grp = (t, n, on, subs, open) => `<div class="g ${on ? '' : 'off'}"><div class="gh">${icon(t)}${n}${subs ? `<span class="cnt">${subs.filter(x => x[1]).length}/${subs.length}</span><span class="car">${open ? '▾' : '▸'}</span>` : ''}<span class="sw ${on ? '' : 'off'}"></span></div>${open ? `<div class="subs">${subs.map(([x, o]) => `<span class="sc ${o ? 'on' : ''}">${x}</span>`).join('')}</div>` : ''}</div>`;
+  const pre = `<div style="display:flex;height:100%">
+      <div class="plist">
+        <div class="pi on"><span class="grip"></span>做任务<span class="k">Alt 1</span></div>
+        <div class="pi"><span class="grip"></span>跑刀<span class="k">Alt 2</span></div>
+        <div class="pi" style="justify-content:center">＋</div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px"><div class="name">做任务</div><span class="key">Alt</span><span class="key">1</span></div>
+        <div class="h">类别</div>
+        <div class="tree">
+          ${grp('extract', '撤离点', 1, [['PMC', 1], ['Scav', 0], ['共用', 1], ['转移点', 0]])}
+          ${grp('quest', '任务', 1)}
+          ${grp('key', '钥匙房', 1, [['需通电', 1], ['不需通电', 1]])}
+          ${grp('boss', 'Boss', 1)}
+          ${grp('loot', '物资', 1, [['保险箱', 1], ['武器箱', 1], ['地下藏匿点', 1], ['电脑主机', 0], ['夹克', 0], ['工具箱', 0], ['医疗包', 0], ['行李箱', 0], ['文件柜', 0], ['弹药箱', 0], ['手雷箱', 0], ['尸体', 0]], 1)}
+          ${grp('spawn', '出生点', 0)}
+          ${grp('boss', '危险区', 1, [['雷区', 1], ['狙击区', 1]])}
+          ${grp('spawn', '开关 · 固定武器', 0)}
+          ${grp('spawn', '自定义标注', 1)}
+        </div>
+        <div class="h">显示</div>
+        <div class="row">仅当前任务<span class="r"><span class="sw"></span></span></div>
+        <div class="row">路线<span class="r"><span class="sw"></span></span></div>
+        <div class="row">轨迹<span class="r"><span class="sw"></span></span></div>
+        <div class="row" style="border:none"><span class="del">删除</span></div>
+      </div></div>`;
+  const fold = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 6h6l2 2.500h10V19H3z"/></svg>';
+  const pathrow = (n, v) => `<div class="row">${n}<span class="r"><span class="path">${v}</span><span class="key" style="color:var(--muted)">${fold}</span></span></div>`;
+  const sl = (n, pct, v) => `<div class="row">${n}<span class="r"><div class="slider"><i style="width:${pct}%"></i><b style="left:${pct}%"></b></div><span class="val">${v}</span></span></div>`;
+  const tg = (n, on = 1) => `<div class="row">${n}<span class="r"><span class="sw ${on ? '' : 'off'}"></span></span></div>`;
+  const btn = t => `<span class="key" style="padding:0 14px">${t}</span>`;
+  const loc = `<div class="h">位置</div>
+      ${pathrow('游戏目录', 'D:\\Battlestate Games\\EFT')}
+      ${pathrow('截图文件夹', '文档\\Escape from Tarkov\\Screenshots')}
+      <div class="h" style="margin-top:22px">截图</div>
+      ${tg('读取后删除')}
+      ${sl('位置过时提醒', 30, '60 秒')}
+      <div class="h" style="margin-top:22px">路线</div>
+      ${sl('到达判定距离', 25, '15 米')}`;
+  const data = `<div class="h">地图数据</div>
+      <div class="row"><span class="dot" style="margin-right:10px"></span>2026-11-12<span class="r">${btn('更新')}</span></div>
+      ${tg('启动时检查更新')}
+      <div class="row">默认底图<span class="r"><div class="seg pill" style="height:32px"><span class="on">矢量</span><span>实景</span></div></span></div>
+      <div class="h" style="margin-top:22px">我的数据</div>
+      <div class="row">自定义标注<span class="r"><span class="val">23</span>${btn('导出')}${btn('导入')}</span></div>
+      <div class="row">通行修正<span class="r"><span class="val">6</span>${btn('导出')}${btn('导入')}</span></div>
+      <div class="h" style="margin-top:22px">回放</div>
+      ${sl('保留最近', 40, '50 局')}
+      <div class="row">已保存<span class="r"><span class="val">37 局</span>${btn('打开')}</span></div>`;
+  const pc = (n, on, cyc, a, d) => `<div class="pc ${on ? 'on' : ''}"><div class="pn">${n}${on ? '<span class="dot"></span>' : ''}</div><div class="pm">第 ${cyc} 周目</div><div class="pnum"><b>${a}</b>进行中<b style="margin-left:14px">${d}</b>已完成</div></div>`;
+  const prof = `<div class="pcs">${pc('PVP', 1, 1, 12, 86)}${pc('PVE', 0, 1, 7, 41)}${pc('PVPS', 0, 1, 4, 9)}</div>
+      <div class="h" style="margin-top:24px">PVP</div>
+      <div class="row">重新回读日志<span class="r">${btn('回读')}</span></div>
+      <div class="row">开启新周目<span class="r">${btn('开启')}</span></div>
+      <div class="row" style="border:none">历史周目<span class="r"><span class="val">0</span></span></div>`;
+  html = `<div class="win">${MAPSVG}${chrome({ settings: 1 })}<div class="dim"></div>
+    <div class="sheet ${scene === 'presets' ? 'tall' : ''}"><div class="tabs">
+      ${[['presets', '预设'], ['keys', '热键'], ['overlay', '叠加层'], ['loc', '定位'], ['data', '数据'], ['prof', '档案']].map(([k, n]) => `<div class="tab ${scene === k ? 'on' : ''}">${n}</div>`).join('')}
+    </div><div class="body">${{ presets: pre, keys, overlay: ov, loc, data, prof }[scene]}</div></div></div>`;
+} else if (scene === 'states') {
+  const cam = '<svg viewBox="0 0 24 24"><path d="M4 8h3l1.500-2.500h7L17 8h3v11H4z"/><circle cx="12" cy="13.200" r="3.300"/></svg>';
+  const folder = '<svg viewBox="0 0 24 24"><path d="M3 6h6l2 2.500h10V19H3z"/></svg>';
+  const dot = c => `<span class="dot" style="background:${c}"></span>`;
+  const G = 'var(--c-extract)', Y = 'var(--accent)', R = 'var(--c-boss)', N = '#6b7480';
+  const row = (cap, inner) => `<div><div class="cap">${cap}</div>${inner}</div>`;
+  const mm = (o, extra = '') => { const span = 520; return `<div class="mm"><svg viewBox="${ME.x - span / 2} ${ME.y - span / 2} ${span} ${span}"><g transform="rotate(${o.me === 'none' ? 0 : -ME.h} ${ME.x} ${ME.y})">${mapBody({ r: 15, rot: o.me === 'none' ? 0 : ME.h, ...o })}</g></svg>${extra}<div class="tag" style="left:10px;bottom:10px">2F</div><div class="tag" style="right:10px;bottom:10px">做任务</div></div>`; };
+  html = `<div class="board">
+    <div class="col">
+      ${row('对局中', `<div class="st pill">${dot(G)}<b>示意地图</b><span>2F</span><span>12:41</span><span>PVP</span></div>`)}
+      ${row('对局外', `<div class="st pill">${dot(N)}<b>示意地图</b><span>PVP</span></div>`)}
+      ${row('进图后还没按过截图', `<div class="st pill"><span class="dot ring" style="background:${Y}"></span><span style="color:${Y}">${cam}</span><b>示意地图</b><span>0:08</span><span>PVP</span></div>`)}
+      ${row('很久没按截图', `<div class="st pill">${dot(G)}<b>示意地图</b><span>2F</span><span>12:41</span><span style="color:${Y}">${cam}</span><span style="color:${Y};margin-left:-8px">3:12</span><span>PVP</span></div>`)}
+      ${row('没识别到地图', `<div class="st pill">${dot(Y)}<b>选择地图</b><span>▾</span></div><div class="mapchips pill">${['海关', '森林', '工厂', '立交桥', '海岸线', '储备站', '灯塔', '街区', '中心区', '实验室'].map(x => `<span>${x}</span>`).join('')}</div>`)}
+      ${row('没找到游戏目录', `<div class="st pill">${dot(R)}<span style="color:var(--text)">${folder}</span><b>选择游戏目录</b></div>`)}
+    </div>
+    <div class="col">${row('叠加层 · 正常', mm({}))}${row('叠加层 · 位置过时', mm({ me: 'stale', v: 'f' }))}</div>
+    <div class="col">${row('叠加层 · 进图后还没按过截图', mm({ me: 'none', route: false }, `<div class="keycap">${cam}</div>`))}</div>
+  </div>`;
+} else if (scene === 'custom') {
+  const T = '#2dd4bf';
+  const shp = (k, c, r = 11) => ({
+    pin: `<path d="M0 ${r * 1.2}C${-r * .2} ${r * .5} ${-r} ${-r * .1} ${-r} ${-r * .55}A${r} ${r} 0 0 1 ${r} ${-r * .55}C${r} ${-r * .1} ${r * .2} ${r * .5} 0 ${r * 1.2}Z" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="${r * .14}"/><circle cy="${-r * .55}" r="${r * .32}" fill="rgba(0,0,0,.7)"/>`,
+    star: `<path d="${[...Array(10)].map((_, i) => { const a = Math.PI * i / 5 - Math.PI / 2, q = i % 2 ? r * .5 : r * 1.15; return (i ? 'L' : 'M') + (q * Math.cos(a)).toFixed(1) + ' ' + (q * Math.sin(a)).toFixed(1); }).join('')}Z" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="${r * .14}" stroke-linejoin="round"/>`,
+    flag: `<path d="M${-r * .6} ${r * 1.1}V${-r}" stroke="${c}" stroke-width="${r * .26}" stroke-linecap="round"/><path d="M${-r * .6} ${-r}H${r * .9}L${r * .4} ${-r * .35}L${r * .9} ${r * .3}H${-r * .6}Z" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="${r * .12}" stroke-linejoin="round"/>`,
+    eye: `<path d="M${-r * 1.15} 0Q0 ${-r * 1.1} ${r * 1.15} 0Q0 ${r * 1.1} ${-r * 1.15} 0Z" fill="${c}" stroke="rgba(0,0,0,.55)" stroke-width="${r * .14}"/><circle r="${r * .38}" fill="rgba(0,0,0,.7)"/>`,
+    cross: `<path d="M${-r * .8} ${-r * .8}L${r * .8} ${r * .8}M${r * .8} ${-r * .8}L${-r * .8} ${r * .8}" stroke="${c}" stroke-width="${r * .42}" stroke-linecap="round"/>`,
+  })[k];
+  const sv = (k, c) => `<svg width="26" height="26" viewBox="-14 -14 28 28">${shp(k, c, 9)}</svg>`;
+  const extra = `<defs><pattern id="hz" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="5" height="12" fill="rgba(255,93,93,.5)"/></pattern></defs>
+    <path d="M1300 600L1500 580L1540 700L1420 790L1290 720Z" fill="url(#hz)" stroke="var(--c-boss)" stroke-width="2.500" stroke-dasharray="8 5"/>
+    <g transform="translate(1415 680)"><path d="M0 -17L17 12H-17Z" fill="#14171c" stroke="var(--c-boss)" stroke-width="2.500" stroke-linejoin="round"/><path d="M0 -6V3" stroke="var(--c-boss)" stroke-width="3" stroke-linecap="round"/><circle cy="8" r="1.800" fill="var(--c-boss)"/></g>
+    <g transform="translate(560 620)">${shp('pin', T, 13)}</g><g transform="translate(1210 470)">${shp('star', '#ffd24a', 12)}</g><g transform="translate(700 300)">${shp('eye', T, 12)}</g>
+    <path d="M1010 700L1070 700" stroke="var(--c-boss)" stroke-width="6" stroke-linecap="round"/><g transform="translate(1040 700)">${shp('cross', '#ff5d5d', 8)}</g>`;
+  const MI = {
+    add: '<svg viewBox="0 0 24 24"><path d="M12 21s7-6.200 7-11.500A7 7 0 0 0 5 9.500C5 14.800 12 21 12 21z"/><path d="M12 6.500v6M9 9.500h6"/></svg>',
+    pin: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.500"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+    block: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M6 6l12 12"/></svg>',
+    pass: '<svg viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6"/></svg>',
+  };
+  html = `<div class="win"><svg class="map" viewBox="20 -10 1600 900" preserveAspectRatio="xMidYMid slice">${mapBody({ r: 12, extra })}</svg>${chrome()}
+    <div class="menu pill" style="left:1262px;top:470px">
+      <div class="mi on">${MI.add}添加标注</div><div class="mi">${MI.pin}设为目标</div><div class="mi">${MI.block}此处不可通行</div><div class="mi">${MI.pass}此处可通行</div>
+    </div>
+    <div class="ed pill" style="left:690px;top:770px">
+      <div class="name">二楼窗口 可架枪</div>
+      <div class="dots">${[T, '#ffd24a', '#ff5d5d', '#4da3ff', '#b58cff', '#ffffff'].map((c, i) => `<i class="${i ? '' : 'on'}" style="background:${c}"></i>`).join('')}</div>
+      <div class="shapes">${['pin', 'star', 'flag', 'eye', 'cross'].map((k, i) => `<span class="${i ? '' : 'on'}">${sv(k, T)}</span>`).join('')}</div>
+      <div class="edf"><span class="key">2F</span><span class="del" style="margin-left:10px">删除</span><span class="ok">✓</span></div>
+    </div>
+  </div>`;
+} else if (scene === 'tree') {
+  const T = window.TT, STY = q.get('st') || 'b';
+  const CW = STY === 'c' ? 172 : 170, RH = STY === 'c' ? 46 : 42, NW = 148, NH = 28, X0 = 112, Y0 = 26, W = 1540, H = 980;
+  // 只画有前后关系的任务；独立任务折叠成商人栏里的一个数字
+  const linked = new Set(T.edges.flat());
+  const byLane = {}; T.nodes.forEach(n => (byLane[n.lane] = byLane[n.lane] || []).push(n));
+  const pos = {}, lanes = []; let yy = 0;
+  for (const l of T.lanes) {
+    const ch = byLane[l.key].filter(n => linked.has(n.id)), rows = 1 + Math.max(0, ...ch.map(n => n.row - l.y));
+    ch.forEach(n => pos[n.id] = { x: X0 + n.col * CW, y: Y0 + (yy + n.row - l.y) * RH, n });
+    lanes.push({ ...l, y0: yy, rows: Math.max(rows, 2), solo: byLane[l.key].length - ch.length, soloDone: byLane[l.key].filter(n => !linked.has(n.id) && n.state === 'done').length });
+    yy += Math.max(rows, 2);
+  }
+  let g = '';
+  lanes.forEach((l, i) => {
+    const y = Y0 + l.y0 * RH - 9, h = l.rows * RH;
+    if (i) g += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.07)"/>`;
+    g += `<circle cx="34" cy="${y + 30}" r="17" fill="#2a313b"/><text x="34" y="${y + 35}" text-anchor="middle" font-size="14" font-weight="700" fill="#aeb8c4">${l.name[0]}</text>`;
+    g += `<text x="12" y="${y + 68}" font-size="12.500" font-weight="600" fill="#aeb8c4">${l.name}</text>`;
+    g += `<text x="12" y="${y + 86}" font-size="11.500" fill="#6b7480">另 ${l.soloDone}/${l.solo}</text>`;
+  });
+  const cx = P => STY === 'c' ? P.x + 11 : P.x, cxr = P => STY === 'c' ? P.x + 11 : P.x + NW, cy = P => P.y + NH / 2;
+  const vis = P => P && P.y < H - 60 && P.x < W - NW - 60;
+  const crossEdges = T.edges.filter(([a, b]) => pos[a] && pos[b] && pos[a].n.lane !== pos[b].n.lane);
+  const sel = crossEdges.filter(([a, b]) => vis(pos[a]) && vis(pos[b]) && pos[b].x > pos[a].x && Math.abs(pos[a].y - pos[b].y) > 120)[0];
+  const inB = {}; for (const [a, b] of crossEdges) (inB[b] = inB[b] || []).push(pos[a].n.lane);
+  for (const [a, b] of T.edges) {
+    const A = pos[a], B = pos[b]; if (!A || !B) continue;
+    const cross = A.n.lane !== B.n.lane, hot = A.n.goal && B.n.goal, isSel = sel && sel[0] === a && sel[1] === b;
+    if (cross && !hot && !isSel) continue;
+    const x1 = cxr(A), y1 = cy(A), x2 = cx(B), y2 = cy(B), mx = (x1 + x2) / 2;
+    g += `<path d="M${x1} ${y1}C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}" fill="none" stroke="${isSel ? '#fff' : hot ? '#ffd24a' : 'rgba(255,255,255,.13)'}" stroke-width="${isSel ? 1.8 : hot ? 1.8 : 1.3}" ${isSel ? 'stroke-dasharray="5 5"' : ''}/>`;
+  }
+  const short = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+  for (const n of T.nodes) {
+    const P = pos[n.id]; if (!P || P.y > H || P.x > W) continue;
+    const isSel = sel && sel.includes(n.id), need = n.goal && n.state !== 'done';
+    if (STY === 'c') {
+      const col = { done: '#4b5563', active: '#ffd24a', open: '#e6ebf0', locked: 'none' }[n.state];
+      const tc = { done: '#6b7480', active: '#fff', open: '#e6ebf0', locked: '#59626e' }[n.state];
+      g += `<g transform="translate(${P.x + 11} ${P.y + NH / 2})">
+        ${need ? `<circle r="14" fill="none" stroke="#ffd24a" stroke-width="1.500"/>` : ''}${isSel ? `<circle r="14" fill="none" stroke="#fff" stroke-width="1.500"/>` : ''}
+        <circle r="9" fill="${n.state === 'locked' ? '#171b21' : col}" stroke="${n.state === 'locked' ? '#3a424d' : 'none'}" stroke-width="1.500"/>
+        ${n.state === 'done' ? `<path d="M-4 0l3 3 5-6" fill="none" stroke="#171b21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+        <text x="19" y="4.500" font-size="13" font-weight="${n.state === 'active' ? 700 : 400}" fill="${tc}">${short(n.name, 9)}</text></g>`;
+    } else {
+      const f = { done: 'rgba(255,255,255,.035)', active: '#ffd24a', open: 'rgba(255,255,255,.13)', locked: '#171b21' }[n.state];
+      const tc = { done: '#6b7480', active: '#14171c', open: '#e6ebf0', locked: '#59626e' }[n.state];
+      g += `<g transform="translate(${P.x} ${P.y})"><rect width="${NW}" height="${NH}" rx="14" fill="${f}" stroke="${isSel ? '#fff' : need && n.state !== 'active' ? '#ffd24a' : n.state === 'locked' ? '#2c333d' : 'none'}" stroke-width="1.500"/>
+        ${n.state === 'done' ? `<path d="M12 14l3 3 5-6" fill="none" stroke="#5f6b78" stroke-width="1.800" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+        <text x="${n.state === 'done' ? 27 : 14}" y="18.500" font-size="13" font-weight="${n.state === 'active' ? 700 : 400}" fill="${tc}">${short(n.name, n.state === 'done' ? 8 : 9)}</text></g>`;
+    }
+    const ins = [...new Set(inB[n.id] || [])];
+    ins.forEach((l, i) => { const nm = T.lanes.find(x => x.key === l).name[0], bx = (STY === 'c' ? P.x - 6 : P.x - 2) - i * 16, by = P.y - 1;
+      g += `<circle cx="${bx}" cy="${by}" r="8" fill="#3a4350" stroke="#171b21" stroke-width="2"/><text x="${bx}" y="${by + 3.500}" text-anchor="middle" font-size="9.500" font-weight="700" fill="#cfd6de">${nm}</text>`; });
+  }
+  if (sel) {
+    const A = pos[sel[0]], B = pos[sel[1]], ln = l => T.lanes.find(x => x.key === l).name;
+    const tw = 236, tx = Math.min(B.x + 6, W - tw - 20), ty = B.y + NH + 10;
+    g += `<g transform="translate(${tx} ${ty})"><rect width="${tw}" height="44" rx="10" fill="#0f1216" stroke="rgba(255,255,255,.16)"/>
+      <circle cx="22" cy="22" r="9" fill="#3a4350"/><text x="22" y="26" text-anchor="middle" font-size="10" font-weight="700" fill="#cfd6de">${ln(A.n.lane)[0]}</text>
+      <text x="40" y="27" font-size="13.500" fill="#fff">${short(A.n.name, 10)}</text><text x="${tw - 14}" y="27" text-anchor="end" font-size="12" fill="#8893a1">${ln(A.n.lane)}</text></g>`;
+  }
+  const st = T.stats;
+  html = `<div class="tv">
+    <div class="tvhead"><div class="seg pill"><span>地图</span><span class="on">任务</span></div>
+      <div class="seg pill"><span class="on">PVP</span><span>PVE</span><span>PVPS</span></div>
+      <div class="chip" style="margin-left:auto">已完成 ${st.done} / ${st.total}</div><div class="ib pill">${I.gear}</div></div>
+    <div class="side pill">
+      <div class="h">目标</div>
+      <div class="goal"><span class="on">Kappa</span><span>灯塔看守人</span><span>转生</span><span>全部任务</span></div>
+      <div class="prog"><i style="width:${100 * (st.need - st.left) / st.need}%"></i></div>
+      <div class="pt">还差<b>${st.left} / ${st.need}</b></div>
+      <div class="h">推荐路线</div>
+      ${T.raids.slice(0, 5).map((r, i) => `<div class="raid ${i ? '' : 'first'}"><div class="rh"><span class="num">${i + 1}</span>${r.map}</div><div class="rt">${r.tasks.join('<br>')}${r.ride.length ? '<br><em>' + r.ride.join('<br>') + '</em>' : ''}</div></div>`).join('')}
+    </div>
+    <div class="canvas"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${g}</svg>
+      <div class="legend pill"><span><i style="background:#4b5563"></i>已完成</span><span><i style="background:#ffd24a"></i>进行中</span><span><i style="background:#e6ebf0"></i>可接取</span><span><i style="border:1.5px solid #3a424d"></i>未解锁</span><span><i style="border:1.5px solid #ffd24a"></i>目标所需</span></div>
+    </div></div>`;
+} else if (scene === 'season') {
+  const B = '#4da3ff';
+  const doc = (r, sub) => `<rect x="${-r}" y="${-r}" width="${r * 2}" height="${r * 2}" rx="${r * .45}" fill="#1b2028" stroke="${B}" stroke-width="${r * .22}"/>
+    <path d="M${-r * .45} ${-r * .6}H${r * .15}L${r * .5} ${-r * .25}V${r * .6}H${-r * .45}Z" fill="${sub ? '#ffd24a' : '#e6ebf0'}"/><path d="M${-r * .2} ${-r * .05}H${r * .25}M${-r * .2} ${r * .25}H${r * .25}" stroke="#1b2028" stroke-width="${r * .14}"/>`;
+  const pts = [[690, 380, 0], [770, 610, 1], [930, 370, 0], [1085, 560, 1], [1250, 310, 0], [1130, 250, 1], [470, 610, 0], [560, 300, 1], [1330, 610, 0], [900, 760, 1]];
+  const extra = pts.map(([x, y, sub]) => `<g transform="translate(${x} ${y})">${doc(12, sub)}</g>`).join('');
+  html = `<div class="win"><svg class="map" viewBox="20 -10 1600 900" preserveAspectRatio="xMidYMid slice">${mapBody({ r: 12, extra, route: false })}</svg>${chrome()}
+    <div class="card pill" style="left:1310px;top:700px;width:280px">
+      <h4><svg width="24" height="24" style="flex:none" viewBox="-14 -14 28 28">${doc(10, 1)}</svg>项目文件<span class="pin">${I.pin}</span></h4>
+      <div class="meta"><span class="tagc">1F</span><span>办公桌上</span><span>212m</span></div>
+    </div></div>`;
+  document.body.insertAdjacentHTML('beforeend', html); html = '';
+  const f = document.querySelector('.filters'), sep = f.querySelector('.sep');
+  sep.insertAdjacentHTML('beforebegin', `<div class="frow" style="background:rgba(77,163,255,.12)"><svg width="22" height="22" viewBox="-14 -14 28 28">${doc(9, 0)}</svg>赛季文件<span class="n">30</span></div>
+    <div style="display:flex;gap:6px;padding:6px 8px 8px 42px;flex-wrap:wrap"><span class="sc on" style="background:#e6ebf0;border-color:#e6ebf0">蓝图与技术文档</span><span class="sc on" style="background:#ffd24a;border-color:#ffd24a">项目文件</span></div>`);
+  document.querySelector('.status').insertAdjacentHTML('beforeend', `<span style="display:flex;align-items:center;gap:6px;color:${B}"><svg width="18" height="18" viewBox="-14 -14 28 28">${doc(9, 0)}</svg><b style="color:${B}">12</b>/ 25</span>`);
+} else if (scene === 'd-doc' || scene === 'd-task') {
+  const pic = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="9" cy="9.500" r="1.500"/></svg>';
+  const pinS = I.pin.replace('width="18" height="18"', 'width="16" height="16"');
+  const docDrawer = `<div class="drawer">
+      <div class="dh"><span class="back">‹</span><img src="icons/doc_6a3181f178450ec91c0ea1aa.png"><div><div class="tt">项目文件</div><div class="st2">赛季通行证文件</div></div></div>
+      <div class="kv"><span class="k">刷新地图</span><span class="mc on">工厂</span><span class="mc">海关</span><span class="mc">储备站</span></div>
+      <div class="kv"><span class="k">今日</span><b style="font-size:17px">12</b><span style="color:var(--muted)">/ 25</span><span class="cnt2"><i>−</i><i>＋</i></span></div>
+      <div class="dsec">本图刷新点<b>15</b></div>
+      <div class="pt2 on" style="display:block">
+        <div class="ph phb">${pic}</div>
+        <div class="pd">办公室二楼，靠窗的办公桌上</div>
+        <div class="pm2"><span class="tagc">2F</span><span>212m</span><span style="margin-left:auto;color:var(--accent);display:flex;gap:6px;align-items:center">${pinS}设为目标</span></div>
+      </div>
+      ${[['在二号门右边地下的尸体身上', 'B1', '86m'], ['锅炉房楼梯下的木箱旁', '1F', '140m'], ['三号门旁集装箱顶上', '1F', '305m']].map(([d, f, m]) => `<div class="pt2"><div class="ph">${pic}</div><div><div class="pd">${d}</div><div class="pm2"><span class="tagc">${f}</span><span>${m}</span></div></div></div>`).join('')}
+    </div>`;
+  const taskDrawer = `<div class="drawer">
+      <div class="dh"><span class="back">‹</span><img src="icons/trader_skier.png" style="border-radius:50%"><div><div class="tt">化学品 - 1</div><div class="st2">Skier · 海关</div></div><div class="act"><span class="abtn">${pinS}设为目标</span></div></div>
+      <div class="kv"><span class="k">状态</span><span class="mc on" style="background:var(--accent);color:#14171c;font-weight:700">进行中</span></div>
+      <div class="kv"><span class="k">后续</span><span class="mc">化学品 - 2</span></div>
+      <div class="dsec">目标<b>1 / 4</b></div>
+      <div class="ob2 done"><span class="cb"></span>找到任何有助于调查的物品</div>
+      <div class="ob2 on" style="display:block">
+        <div style="display:flex;gap:12px;align-items:flex-start"><span class="cb" style="margin-top:3px"></span>在海关取得任何关于安全副官生平的信息<span class="loc">${pinS}</span></div>
+        <div class="ph phb" style="height:196px;margin-top:12px">${pic}</div>
+        <div class="pm2" style="margin-top:0"><span class="tagc">2F</span><span>宿舍楼二层，220 房间的桌上</span></div>
+      </div>
+      <div class="ob2"><span class="cb"></span>上交信息</div>
+      <div class="ob2"><span class="cb"></span>上交物品</div>
+      <div class="ob2" style="color:var(--muted)"><span class="cb" style="border-style:dashed"></span>在海关找到化工厂前安全副官的住处<span class="loc" style="color:var(--muted)">可选</span></div>
+      <div class="dsec">需要携带</div>
+      <div class="its"><div class="it"><img src="icons/it_5780cfa52459777dfb276eb1.png">宿舍220房间钥匙</div></div>
+      <div class="dsec">奖励</div>
+      <div class="its"><div class="it" style="padding-left:12px">经验 <b>3000</b></div><div class="it"><img src="icons/it_569668774bdc2da2298b4568.png">欧元 <b>×450</b></div><div class="it"><img src="icons/it_5d5e9c74a4b9364855191c40.png">TC-2002</div><div class="it"><img src="icons/it_64aceab0426a303417060654.png">SP BT <b>×2</b></div></div>
+    </div>`;
+  html = `<div class="win">${MAPSVG}${chrome()}${scene === 'd-doc' ? docDrawer : taskDrawer}</div>`;
+} else if (scene === 'mini-detail') {
+  const span = 520, pic = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="9" cy="9.500" r="1.500"/></svg>';
+  html = gameBackdrop() + `<div class="mini">
+    <svg viewBox="${ME.x - span / 2} ${ME.y - span / 2} ${span} ${span}"><g transform="rotate(${-ME.h} ${ME.x} ${ME.y})">${mapBody({ r: 15, rot: ME.h })}</g></svg>
+    <div class="tag" style="left:10px;top:10px;color:var(--accent);font-weight:700">① 186m</div>
+    <div class="tag" style="left:10px;bottom:10px">2F</div><div class="tag" style="right:10px;bottom:10px">做任务</div>
+  </div>
+  <div class="ovd"><div class="ph">${pic}</div><div class="bd">
+    <div class="t1"><span class="num">1</span>化学品 - 1<b>186m</b></div>
+    <div class="t2">在海关取得任何关于安全副官生平的信息</div>
+    <div class="t3"><span class="tagc">2F</span><span>宿舍楼二层，220 房间的桌上</span></div>
+  </div></div>`;
+} else if (scene === 'mini') {
+  const span = 520;
+  html = gameBackdrop() + `<div class="mini">
+    <svg viewBox="${ME.x - span / 2} ${ME.y - span / 2} ${span} ${span}"><g transform="rotate(${-ME.h} ${ME.x} ${ME.y})">${mapBody({ r: 15, rot: ME.h })}</g></svg>
+    <div class="edge" style="right:6px;top:120px;color:var(--c-extract)">412m<svg width="14" height="14" viewBox="-7 -7 14 14" style="transform:rotate(-11deg)"><path d="M-4 -5L5 0L-4 5Z" fill="currentColor"/></svg></div>
+    <div class="tag" style="left:10px;top:10px;color:var(--accent);font-weight:700">① 186m</div>
+    <div class="tag" style="left:10px;bottom:10px">2F</div><div class="tag" style="right:10px;bottom:10px">做任务</div>
+  </div>`;
+} else {
+  html = gameBackdrop() + `<div class="big">
+    <svg viewBox="20 -10 1600 1000" preserveAspectRatio="xMidYMid slice">${mapBody({ r: 13 })}</svg>
+    <div class="tag" style="left:16px;top:16px;font-size:15px;padding:4px 12px;color:var(--accent);font-weight:700">① 放置信标 186m</div>
+    <div class="tag" style="left:16px;bottom:16px;font-size:15px;padding:4px 12px">2F</div>
+    <div class="tag" style="right:16px;bottom:16px;font-size:15px;padding:4px 12px">做任务</div>
+  </div>`;
+}
+document.body.insertAdjacentHTML('beforeend', html);
+</script>
+</body>
+</html>

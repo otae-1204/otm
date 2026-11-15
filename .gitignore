@@ -1,0 +1,5 @@
+# 上游数据的本地副本（体积大，随时可以重新下载）
+design/prototypes/data/
+# 本机工具产生的目录
+.codegraph/
+.iridium/

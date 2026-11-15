@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>otm mockup</title>
+<style>
+  :root {
+    --font: "Noto Sans CJK SC", "Noto Sans CJK JP", sans-serif;
+  }
+  body.a {
+    --bg: #14171c; --land: #1b2027; --land2: #20262e; --forest: #1c2a24; --water: #17303f;
+    --road: #39414d; --road-w: 9; --bld: #2c343f; --bld-stroke: #465160; --bld-sw: 1.5;
+    --grid: rgba(255,255,255,.025);
+    --panel: rgba(22,26,32,.88); --panel-line: rgba(255,255,255,.08);
+    --text: #dfe5ec; --muted: #8893a1; --accent: #ffd24a;
+    --c-extract: #3ddc84; --c-key: #f5a524; --c-quest: #4da3ff; --c-loot: #b58cff; --c-boss: #ff5d5d; --c-spawn: #7d8794;
+    --me: #ffffff;
+  }
+  body.b {
+    --bg: #0c0e0b; --land: #0f120e; --land2: #12160f; --forest: #111a10; --water: #0d1a1c;
+    --road: #5a6048; --road-w: 3; --bld: rgba(0,0,0,0); --bld-stroke: #7f8a66; --bld-sw: 2;
+    --grid: rgba(190,200,150,.05);
+    --panel: rgba(12,14,11,.9); --panel-line: rgba(190,200,150,.18);
+    --text: #d6dcc2; --muted: #7d8568; --accent: #e8ff6a;
+    --c-extract: #8dff9a; --c-key: #ffc35a; --c-quest: #7fd0ff; --c-loot: #d3b0ff; --c-boss: #ff7a6a; --c-spawn: #7d8568;
+    --me: #e8ff6a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; font-family: var(--font); color: var(--text); background: var(--bg); }
+  svg text { font-family: var(--font); }
+
+  /* ---------- window mode ---------- */
+  .win { position: absolute; inset: 0; }
+  .win svg.map { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .presets { position: absolute; top: 24px; left: 24px; display: flex; gap: 8px; }
+  .chip { height: 38px; padding: 0 16px; border-radius: 19px; display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--panel-line); font-size: 16px; color: var(--muted); }
+  .chip.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .chip kbd { font: inherit; font-size: 12px; opacity: .6; }
+  .filters { position: absolute; top: 78px; left: 24px; width: 236px; padding: 10px; border-radius: 14px;
+    background: var(--panel); border: 1px solid var(--panel-line); }
+  .frow { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 8px; border-radius: 8px; font-size: 16px; }
+  .frow.off { opacity: .35; }
+  .frow .n { margin-left: auto; color: var(--muted); font-size: 14px; }
+  .frow svg { width: 22px; height: 22px; flex: none; }
+  .sep { height: 1px; background: var(--panel-line); margin: 8px 4px; }
+  .floors { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px;
+    padding: 8px; border-radius: 14px; background: var(--panel); border: 1px solid var(--panel-line); }
+  .fl { width: 44px; height: 40px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; color: var(--muted); }
+  .fl.on { background: var(--accent); color: var(--bg); font-weight: 700; }
+  .status { position: absolute; left: 24px; bottom: 24px; display: flex; gap: 14px; align-items: center;
+    height: 38px; padding: 0 16px; border-radius: 19px; background: var(--panel); border: 1px solid var(--panel-line); font-size: 15px; color: var(--muted); }
+  .status b { color: var(--text); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-extract); }
+
+  /* ---------- fake game backdrop ---------- */
+  .game { position: absolute; inset: 0; background:
+      radial-gradient(ellipse at 50% 120%, rgba(0,0,0,.0) 40%, rgba(0,0,0,.55) 100%),
+      linear-gradient(#6f7d86 0%, #9aa39c 38%, #6c6f5c 47%, #3f4435 60%, #23271f 100%); }
+  .game svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hud { position: absolute; left: 40px; bottom: 36px; display: flex; flex-direction: column; gap: 6px; }
+  .bar { width: 200px; height: 6px; background: rgba(0,0,0,.45); }
+  .bar i { display: block; height: 100%; background: rgba(230,230,220,.75); }
+  .ammo { position: absolute; right: 44px; bottom: 34px; font-size: 22px; color: rgba(235,235,225,.8); letter-spacing: 1px; }
+
+  /* ---------- overlay ---------- */
+  .mini { position: absolute; top: 28px; right: 28px; width: 320px; height: 320px; border-radius: 18px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.14); box-shadow: 0 8px 30px rgba(0,0,0,.45); opacity: .9; }
+  .mini svg { width: 100%; height: 100%; display: block; }
+  .tag { position: absolute; font-size: 13px; padding: 2px 8px; border-radius: 9px; background: rgba(0,0,0,.55); color: #e8ecef; }
+  .big { position: absolute; left: 50%; top: 50%; width: 1320px; height: 825px; transform: translate(-50%,-50%);
+    border-radius: 22px; overflow: hidden; border: 1px solid rgba(255,255,255,.14); box-shadow: 0 20px 80px rgba(0,0,0,.6); opacity: .92; }
+  .big svg { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+<script>
+const q = new URLSearchParams(location.search);
+const scene = q.get('scene') || 'window';
+const theme = q.get('theme') || 'a';
+document.body.className = theme;
+
+const ME = { x: 820, y: 560, h: 40 };
+
+const TYPES = {
+  extract: { name: '撤离点', n: 6 },
+  key:     { name: '钥匙房', n: 9 },
+  quest:   { name: '任务',   n: 4 },
+  loot:    { name: '物资',   n: 14 },
+  boss:    { name: 'Boss',   n: 1 },
+  spawn:   { name: '出生点', n: 11 },
+};
+
+// marker glyph: distinct outer shape per category + colour
+function glyph(type, r) {
+  const c = `var(--c-${type})`;
+  const line = theme === 'b';
+  const fill = line ? 'var(--bg)' : c;
+  const ink = line ? c : 'rgba(0,0,0,.75)';
+  const sw = line ? r * .2 : r * .14;
+  const st = line ? c : 'rgba(0,0,0,.55)';
+  let outer, inner;
+  switch (type) {
+    case 'extract':
+      outer = `<circle r="${r}" fill="${fill}" stroke="${st}" stroke-width="${sw}"/>`;
+      inner = `<path d="M${-r*.45} 0H${r*.4}M${r*.05} ${-r*.38}L${r*.45} 0L${r*.05} ${r*.38}" fill="none" stroke="${ink}" stroke-width="${r*.24}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      break;
+    case 'key':
+      outer = `<rect x="${-r*.9}" y="${-r*.9}" width="${r*1.8}" height="${r*1.8}" rx="${r*.3}" transform="rotate(45)" fill="${fill}" stroke="${st}" stroke-width="${sw}"/>`;
+      inner = `<circle cx="${-r*.25}" cy="0" r="${r*.26}" fill="none" stroke="${ink}" stroke-width="${r*.2}"/><path d="M0 0H${r*.55}M${r*.38} 0V${r*.28}" fill="none" stroke="${ink}" stroke-width="${r*.2}" stroke-linecap="round"/>`;
+      break;
+    case 'quest':
+      outer = `<path d="M0 ${-r*1.1}L${r*.95} ${-r*.55}V${r*.55}L0 ${r*1.1}L${-r*.95} ${r*.55}V${-r*.55}Z" fill="${fill}" stroke="${st}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+      inner = `<path d="M0 ${-r*.5}V${r*.1}" stroke="${ink}" stroke-width="${r*.26}" stroke-linecap="round"/><circle cy="${r*.48}" r="${r*.15}" fill="${ink}"/>`;
+      break;
+    case 'loot':
+      outer = `<rect x="${-r*.85}" y="${-r*.85}" width="${r*1.7}" height="${r*1.7}" rx="${r*.25}" fill="${fill}" stroke="${st}" stroke-width="${sw}"/>`;
+      inner = `<path d="M${-r*.45} ${-r*.1}H${r*.45}M0 ${-r*.1}V${r*.2}" stroke="${ink}" stroke-width="${r*.2}" stroke-linecap="round"/>`;
+      break;
+    case 'boss':
+      outer = `<path d="M0 ${-r*1.15}L${r*1.1} ${r*.8}H${-r*1.1}Z" fill="${fill}" stroke="${st}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+      inner = `<circle cy="${r*.2}" r="${r*.22}" fill="${ink}"/>`;
+      break;
+    default:
+      outer = `<circle r="${r*.5}" fill="${line ? 'none' : c}" stroke="${c}" stroke-width="${r*.18}" opacity=".8"/>`;
+      inner = '';
+  }
+  return outer + inner;
+}
+
+const MARKERS = [
+  ['extract', 140, 470], ['extract', 1480, 250], ['extract', 1390, 880], ['extract', 610, 110],
+  ['key', 700, 470], ['key', 905, 430], ['key', 1010, 610], ['key', 1210, 330], ['key', 380, 720],
+  ['quest', 960, 500, 1], ['quest', 1150, 700], ['quest', 470, 300], ['quest', 730, 760],
+  ['loot', 760, 420], ['loot', 1060, 470], ['loot', 1255, 560], ['loot', 320, 420], ['loot', 560, 830], ['loot', 1330, 420],
+  ['boss', 985, 395],
+  ['spawn', 250, 240], ['spawn', 220, 800], ['spawn', 1500, 560], ['spawn', 900, 900], ['spawn', 1060, 140],
+];
+const CLUSTERS = [['loot', 870, 520, 5], ['key', 1120, 250, 3], ['loot', 480, 560, 4]];
+
+function mapBody(opt) {
+  const { r = 13, rot = 0, tip = false, dimOthers = false } = opt;
+  const HIDE = ['loot', 'spawn'];
+  const up = rot ? ` rotate(${rot})` : '';
+  let s = '';
+  s += `<defs><pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M80 0H0V80" fill="none" stroke="var(--grid)" stroke-width="1"/></pattern>
+        <radialGradient id="cone" cx="0" cy="0" r="1" gradientUnits="objectBoundingBox" gradientTransform="translate(.5 1)"><stop offset="0" stop-color="var(--me)" stop-opacity=".32"/><stop offset="1" stop-color="var(--me)" stop-opacity="0"/></radialGradient></defs>`;
+  s += `<rect x="-800" y="-800" width="3200" height="2600" fill="var(--bg)"/>`;
+  // land mass
+  s += `<path d="M60 120C260 40 520 60 760 50S1300 30 1540 130C1600 330 1580 620 1560 880C1300 960 980 970 700 960S220 960 70 900C20 660 30 330 60 120Z" fill="var(--land)"/>`;
+  s += `<path d="M420 200C640 150 980 160 1240 220C1340 400 1330 640 1260 800C980 860 620 850 400 790C330 600 340 380 420 200Z" fill="var(--land2)"/>`;
+  s += `<rect x="-800" y="-800" width="3200" height="2600" fill="url(#grid)"/>`;
+  // forest
+  for (const [cx, cy, rx, ry] of [[230, 330, 130, 90], [300, 640, 150, 110], [1420, 420, 110, 150], [1380, 740, 130, 90], [760, 880, 190, 55], [820, 140, 220, 50]])
+    s += `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="var(--forest)"/>`;
+  // river
+  s += `<path d="M-60 560C160 590 250 520 400 560S560 700 640 800S690 960 700 1100" fill="none" stroke="var(--water)" stroke-width="46" stroke-linecap="round"/>`;
+  // roads
+  const road = d => `<path d="${d}" fill="none" stroke="var(--road)" stroke-width="var(--road-w)" stroke-linecap="round" stroke-linejoin="round"/>`;
+  s += road('M40 470H420L560 400H1240L1400 300L1560 250');
+  s += road('M610 60V400'); s += road('M1040 400V640L1180 720L1400 880');
+  s += road('M560 400V640H1040'); s += road('M800 640V940');
+  // bridge
+  s += `<rect x="330" y="455" width="120" height="30" fill="var(--road)" opacity=".9"/>`;
+  // buildings
+  const B = [[640, 430, 130, 80], [660, 520, 90, 90], [1080, 430, 110, 70], [1090, 520, 70, 100], [1200, 290, 120, 70], [1230, 520, 90, 90],
+             [440, 270, 90, 70], [340, 690, 110, 70], [690, 720, 90, 80], [1110, 670, 100, 60], [1290, 390, 80, 60], [280, 400, 80, 50], [520, 800, 90, 60]];
+  for (const [x, y, w, h] of B) s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="var(--bld)" stroke="var(--bld-stroke)" stroke-width="var(--bld-sw)"/>`;
+  // main complex with inner walls
+  s += `<path d="M830 340H1020V460H960V600H830Z" fill="var(--bld)" stroke="var(--bld-stroke)" stroke-width="calc(var(--bld-sw) * 1.4)"/>`;
+  s += `<path d="M830 400H1020M890 340V600M830 470H960M830 535H960M955 400V460" fill="none" stroke="var(--bld-stroke)" stroke-width="1.2" opacity=".7"/>`;
+
+  // markers
+  const mk = (type, x, y, extra = '') => `<g transform="translate(${x} ${y})${up}" ${extra}>${glyph(type, type === 'spawn' ? r * .8 : r)}</g>`;
+  for (const [t, x, y, focus] of MARKERS) {
+    if (HIDE.includes(t)) continue;
+    const dim = dimOthers && t !== 'quest' && t !== 'extract' ? 'opacity=".28"' : '';
+    if (focus) s += `<g transform="translate(${x} ${y})"><circle r="${r * 2.1}" fill="none" stroke="var(--c-quest)" stroke-width="2" opacity=".55"/></g>`;
+    s += mk(t, x, y, dim);
+  }
+  for (const [t, x, y, n] of CLUSTERS) {
+    if (HIDE.includes(t)) continue;
+    const c = `var(--c-${t})`;
+    s += `<g transform="translate(${x} ${y})${up}" ${dimOthers ? 'opacity=".28"' : ''}>
+      <circle r="${r * 1.35}" fill="${theme === 'b' ? 'var(--bg)' : c}" fill-opacity="${theme === 'b' ? 1 : .22}" stroke="${c}" stroke-width="${r * .16}"/>
+      <text y="${r * .42}" text-anchor="middle" font-size="${r * 1.15}" font-weight="700" fill="${c}">${n}</text></g>`;
+  }
+  // tooltip on the focused quest marker
+  if (tip) {
+    s += `<g transform="translate(985 462)"><rect x="0" y="-17" width="150" height="34" rx="8" fill="var(--panel)" stroke="var(--panel-line)"/>
+      <text x="12" y="6" font-size="15" fill="var(--text)">放置信标 · 2F</text></g>`;
+  }
+  // player
+  s += `<g transform="translate(${ME.x} ${ME.y}) rotate(${ME.h})">
+      <path d="M0 0L-150 -260A300 300 0 0 1 150 -260Z" fill="url(#cone)"/>
+      <circle r="${r * 1.5}" fill="var(--me)" opacity=".16"/>
+      <path d="M0 ${-r * 1.5}L${r * 1.05} ${r * 1.1}L0 ${r * .5}L${-r * 1.05} ${r * 1.1}Z" fill="var(--me)" stroke="rgba(0,0,0,.6)" stroke-width="${r * .14}" stroke-linejoin="round"/>
+    </g>`;
+  return s;
+}
+
+function icon(type) { return `<svg viewBox="-14 -14 28 28">${glyph(type, 10)}</svg>`; }
+
+function gameBackdrop() {
+  return `<div class="game"><svg viewBox="0 0 1920 1080" preserveAspectRatio="none">
+    <path d="M0 520L180 470L260 500L420 430L600 505L760 460L900 500L1100 440L1300 500L1500 450L1700 500L1920 465V560H0Z" fill="#59604f"/>
+    <rect x="240" y="380" width="230" height="170" fill="#3d4238"/><rect x="270" y="410" width="34" height="40" fill="#22261f"/><rect x="340" y="410" width="34" height="40" fill="#22261f"/><rect x="410" y="410" width="34" height="40" fill="#22261f"/>
+    <rect x="1250" y="330" width="330" height="230" fill="#353a31"/><rect x="1290" y="370" width="40" height="50" fill="#1f231c"/><rect x="1370" y="370" width="40" height="50" fill="#1f231c"/><rect x="1450" y="370" width="40" height="50" fill="#1f231c"/><rect x="1290" y="450" width="40" height="50" fill="#1f231c"/><rect x="1450" y="450" width="40" height="50" fill="#1f231c"/>
+    <path d="M820 560L900 540H1020L1100 560L1500 1080H420Z" fill="#33372d"/>
+    <g fill="#1e231b"><path d="M90 560L130 300L170 560Z"/><path d="M620 560L655 360L690 560Z"/><path d="M1680 560L1730 280L1780 560Z"/><path d="M1120 560L1150 400L1180 560Z"/></g>
+    <path d="M1180 1080L1320 760L1420 720L1560 760L1920 900V1080Z" fill="#14160f"/><rect x="1330" y="700" width="150" height="34" rx="6" transform="rotate(-18 1330 700)" fill="#0d0f0a"/>
+  </svg>
+  <div class="hud"><div class="bar"><i style="width:82%"></i></div><div class="bar"><i style="width:56%"></i></div></div>
+  <div class="ammo">30 / 90</div></div>`;
+}
+
+let html = '';
+if (scene === 'window') {
+  html = `<div class="win">
+    <svg class="map" viewBox="20 -10 1600 900" preserveAspectRatio="xMidYMid slice">${mapBody({ r: 12, tip: true })}</svg>
+    <div class="presets">
+      <div class="chip on">做任务</div><div class="chip">跑刀</div><div class="chip">全部</div><div class="chip">＋</div>
+    </div>
+    <div class="filters">
+      ${['extract', 'quest', 'key', 'boss'].map(t => `<div class="frow">${icon(t)}${TYPES[t].name}<span class="n">${TYPES[t].n}</span></div>`).join('')}
+      <div class="sep"></div>
+      ${['loot', 'spawn'].map(t => `<div class="frow off">${icon(t)}${TYPES[t].name}<span class="n">${TYPES[t].n}</span></div>`).join('')}
+    </div>
+    <div class="floors"><div class="fl">3F</div><div class="fl on">2F</div><div class="fl">1F</div><div class="fl">B1</div></div>
+    <div class="status"><span class="dot"></span><b>示意地图</b><span>2F</span><span>12:41</span></div>
+  </div>`;
+} else if (scene === 'mini') {
+  const span = 520;
+  html = gameBackdrop() + `<div class="mini">
+    <svg viewBox="${ME.x - span / 2} ${ME.y - span / 2} ${span} ${span}"><g transform="rotate(${-ME.h} ${ME.x} ${ME.y})">${mapBody({ r: 15, rot: ME.h, dimOthers: false })}</g></svg>
+    <div class="tag" style="left:10px;bottom:10px">2F</div><div class="tag" style="right:10px;bottom:10px">做任务</div>
+  </div>`;
+} else {
+  html = gameBackdrop() + `<div class="big">
+    <svg viewBox="20 -10 1600 1000" preserveAspectRatio="xMidYMid slice">${mapBody({ r: 13, dimOthers: false })}</svg>
+    <div class="tag" style="left:16px;bottom:16px;font-size:15px;padding:4px 12px">2F</div>
+    <div class="tag" style="right:16px;bottom:16px;font-size:15px;padding:4px 12px">做任务</div>
+  </div>`;
+}
+document.body.insertAdjacentHTML('beforeend', html);
+</script>
+</body>
+</html>
