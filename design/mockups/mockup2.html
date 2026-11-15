@@ -208,6 +208,15 @@
   .ovd .t1 b { margin-left: auto; color: var(--accent); }
   .ovd .t2 { font-size: 14px; color: #dfe5ec; margin-top: 8px; line-height: 1.5; }
   .ovd .t3 { display: flex; gap: 8px; margin-top: 8px; font-size: 12.500px; color: var(--muted); align-items: center; }
+  .cl { position: absolute; width: 44px; height: 44px; }
+  .cl img { position: absolute; inset: 0; width: 44px; height: 44px; }
+  .cl::before, .cl::after { content: ""; position: absolute; inset: 3px; border-radius: 11px; border: 2px solid var(--cc); opacity: .45; transform: translate(5px, -5px); }
+  .cl::after { transform: translate(10px, -10px); opacity: .22; }
+  .cl.dia::before, .cl.dia::after { border-radius: 4px; inset: 8px; transform: translate(5px, -5px) rotate(45deg); } .cl.dia::after { transform: translate(10px, -10px) rotate(45deg); }
+  .cl b { position: absolute; right: -12px; top: -12px; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--cc); color: #14171c; font-size: 13.500px; font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px #1b2027; }
+  .cl.s { transform: scale(.62); transform-origin: top left; }
+  .tip { position: absolute; width: 214px; padding: 10px; border-radius: 12px; }
+  .tip div { display: flex; align-items: center; gap: 10px; height: 34px; font-size: 14.500px; } .tip img { width: 26px; height: 26px; } .tip span { margin-left: auto; color: var(--muted); }
   /* fake game */
   .game { position: absolute; inset: 0; background:
       radial-gradient(ellipse at 50% 120%, rgba(0,0,0,0) 40%, rgba(0,0,0,.55) 100%),
@@ -667,6 +676,22 @@ if (scene === 'main') {
     <div class="t2">在海关取得任何关于安全副官生平的信息</div>
     <div class="t3"><span class="tagc">2F</span><span>宿舍楼二层，220 房间的桌上</span></div>
   </div></div>`;
+} else if (scene === 'cluster') {
+  const cl = (x, y, icon, n, c, extra = '') => `<div class="cl ${extra}" style="left:${x}px;top:${y}px;--cc:${c}"><img src="icons/${icon}.png"><b>${n}</b></div>`;
+  const P = '#9d8cff', K = '#f5a524';
+  html = `<div class="win"><svg class="map" viewBox="560 260 720 405" preserveAspectRatio="xMidYMid slice">${mapBody({ r: 0.01, route: false, me: 'none' })}</svg>
+    <div class="cap" style="position:absolute;left:60px;top:40px;font-size:18px">现在</div>
+    <div style="position:absolute;left:80px;top:110px;width:44px;height:44px;border-radius:50%;border:2.500px solid ${P};display:grid;place-items:center;color:${P};font-weight:700;font-size:17px;background:rgba(157,140,255,.2)">60</div>
+    <div style="position:absolute;left:190px;top:110px;width:44px;height:44px;border-radius:50%;border:2.500px solid ${K};display:grid;place-items:center;color:${K};font-weight:700;font-size:17px;background:rgba(245,165,36,.2)">16</div>
+    <div class="cap" style="position:absolute;left:60px;top:230px;font-size:18px">改成：图标 + 数量角标</div>
+    ${cl(90, 310, 'container_safe', 12, P)}${cl(230, 310, 'container_weapon-box', 60, P)}${cl(370, 310, 'container_jacket', 7, P)}${cl(510, 310, 'key', 16, K, 'dia')}${cl(650, 310, 'spawn_scav', 9, '#8d97a5')}
+    <div class="cap" style="position:absolute;left:60px;top:420px;font-size:18px">全图视角下的实际大小</div>
+    ${cl(90, 490, 'container_safe', 12, P, 's')}${cl(170, 490, 'container_weapon-box', 60, P, 's')}${cl(250, 490, 'container_jacket', 7, P, 's')}${cl(330, 490, 'key', 16, K, 's dia')}${cl(410, 490, 'spawn_scav', 9, '#8d97a5', 's')}
+    <div class="cap" style="position:absolute;left:1000px;top:230px;font-size:18px">鼠标悬停时</div>
+    ${cl(1030, 330, 'container_weapon-box', 60, P)}
+    <div class="tip pill" style="left:1110px;top:300px">
+      ${[['container_weapon-box', '武器箱', 22], ['container_jacket', '夹克', 14], ['container_pc-block', '电脑机箱', 9], ['container_duffle-bag', '旅行包', 8], ['container_safe', '保险箱', 4], ['container_medbag', '医疗包', 3]].map(([i, n, c]) => `<div><img src="icons/${i}.png">${n}<span>${c}</span></div>`).join('')}
+    </div></div>`;
 } else if (scene === 'mini') {
   const span = 520;
   html = gameBackdrop() + `<div class="mini">
