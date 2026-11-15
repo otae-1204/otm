@@ -141,7 +141,12 @@ mod tests {
         assert!(tail.poll().is_empty(), "文件不存在时没有内容");
 
         let mut f = fs::File::create(&path).unwrap();
-        write!(f, "{}", line("2026-11-15 18:00:40.493", "GameStarted:1").replace('\n', "\r\n")).unwrap();
+        write!(
+            f,
+            "{}",
+            line("2026-11-15 18:00:40.493", "GameStarted:1").replace('\n', "\r\n")
+        )
+        .unwrap();
         f.flush().unwrap();
         let recs = tail.poll();
         assert_eq!(recs.len(), 1);
@@ -149,7 +154,11 @@ mod tests {
         assert!(tail.poll().is_empty(), "第二次不该重复读");
 
         // 半行先不读。
-        write!(f, "2026-11-15 18:00:41.000|1.3.0.2.48779|Info|application|Disposing BECli").unwrap();
+        write!(
+            f,
+            "2026-11-15 18:00:41.000|1.3.0.2.48779|Info|application|Disposing BECli"
+        )
+        .unwrap();
         f.flush().unwrap();
         assert!(tail.poll().is_empty());
         write!(f, "ent\r\n").unwrap();
@@ -249,7 +258,12 @@ mod tests {
         tail.skip_to_end();
         assert!(tail.poll().is_empty());
         let mut f = fs::OpenOptions::new().append(true).open(&path).unwrap();
-        write!(f, "{}", line("2026-11-15 18:00:41.000", "Disposing BEClient")).unwrap();
+        write!(
+            f,
+            "{}",
+            line("2026-11-15 18:00:41.000", "Disposing BEClient")
+        )
+        .unwrap();
         drop(f);
         let recs = tail.poll();
         assert_eq!(recs.len(), 1);

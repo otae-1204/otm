@@ -17,3 +17,9 @@ path = "src/bin/otm-replay.rs"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 time = { version = "0.3", features = ["local-offset"] }
+# 问系统"文档"在哪（Windows 上是 SHGetKnownFolderPath）。
+dirs = "7"
+
+# 读 EFT 的安装位置。只有 Windows 上有注册表。
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"

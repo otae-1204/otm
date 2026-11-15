@@ -13,11 +13,11 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use crate::event::Event;
+use crate::event::{Event, Snapshot};
 use crate::paths::{self, Dirs};
 use crate::screenshot::parse_screenshot_name;
 use crate::state::State;
@@ -27,7 +27,8 @@ use crate::time::Timestamp;
 /// 监听器怎么配。
 #[derive(Debug, Clone)]
 pub struct WatchOptions {
-    /// 游戏目录（里面有 `Logs`）。给 `None` 时从截图目录反推。
+    /// 游戏目录（里面有 `Logs`）。给 `None` 时先问系统（Windows 上读注册表），
+    /// 再退回到从截图目录反推。
     pub game_dir: Option<PathBuf>,
     /// 截图目录。给 `None` 时用默认位置。
     pub screenshot_dir: Option<PathBuf>,
@@ -90,6 +91,10 @@ pub struct Watcher {
     stop: Sender<()>,
     thread: Option<JoinHandle<()>>,
     map_mismatches: Arc<Mutex<Vec<(String, String)>>>,
+    /// 状态机，和监听线程共用一份：事件从它来，快照也从它来。
+    state: Arc<Mutex<State>>,
+    /// 用户手选的游戏目录，[`Watcher::set_game_dir`] 写，监听线程每轮读。
+    game_dir: Arc<Mutex<Option<PathBuf>>>,
 }
 
 impl Watcher {
@@ -99,10 +104,15 @@ impl Watcher {
         let (stop_tx, stop_rx) = mpsc::channel();
         let map_mismatches = Arc::new(Mutex::new(Vec::new()));
         let shared = Arc::clone(&map_mismatches);
+        let state = Arc::new(Mutex::new(State::new()));
+        let loop_state = Arc::clone(&state);
+        let game_dir = Arc::new(Mutex::new(None));
+        let loop_game_dir = Arc::clone(&game_dir);
         let thread = thread::Builder::new()
             .name("otm-watch".into())
             .spawn(move || {
-                let mut loop_ = WatchLoop::new(options, event_tx, shared);
+                let mut loop_ =
+                    WatchLoop::new(options, event_tx, shared, loop_state, loop_game_dir);
                 loop_.run(&stop_rx);
             })
             .expect("起不了监听线程");
@@ -111,6 +121,8 @@ impl Watcher {
             stop: stop_tx,
             thread: Some(thread),
             map_mismatches,
+            state,
+            game_dir,
         }
     }
 
@@ -129,15 +141,36 @@ impl Watcher {
         self.events.recv_timeout(timeout).ok()
     }
 
+    /// 监听线程还在跑吗。
+    ///
+    /// [`Watcher::recv_timeout`] 超时和"线程不在了"都返回 `None`，用它分清楚：
+    /// 线程 panic 掉之后 `recv_timeout` 会立刻返回，照着超时轮询会变成空转。
+    pub fn is_running(&self) -> bool {
+        self.thread.as_ref().is_some_and(|t| !t.is_finished())
+    }
+
     /// 加载时给出的地图名和进局记录里的 `Location` 对不上的那些对，`(预设名, 地点名)`。
     ///
     /// 正常情况下是空的。有记录说明 [`crate::maps`] 的对照表缺一条，把这对补进去就行。
     /// 接界面时建议把它写进日志，方便以后补表。
     pub fn map_mismatches(&self) -> Vec<(String, String)> {
-        self.map_mismatches
-            .lock()
-            .map(|m| m.clone())
-            .unwrap_or_default()
+        lock(&self.map_mismatches).clone()
+    }
+
+    /// 当前状态快照，字段见 `core/EVENTS.md`。
+    ///
+    /// 和事件是同一份状态机算出来的，不用自己把事件再拼一遍。
+    pub fn snapshot(&self) -> Snapshot {
+        lock(&self.state).snapshot()
+    }
+
+    /// 换游戏目录（界面上用户手选的）。下一轮轮询就生效。
+    ///
+    /// 目录变了会重新找日志目录，找到的目录和上次不一样时报一个 `paths` 事件；
+    /// 新的游戏目录里没有 `Logs` 时，`paths` 里的 `log_dir` 是 `null`。
+    /// 给 `None` 就退回自动找（先问系统，再从截图目录反推）。
+    pub fn set_game_dir(&self, dir: Option<PathBuf>) {
+        *lock(&self.game_dir) = dir;
     }
 
     /// 停下监听线程并等它结束。
@@ -159,11 +192,19 @@ impl Drop for Watcher {
     }
 }
 
+/// 拿锁。别的线程 panic 过（锁中毒）也照用：状态坏了总比监听线程跟着挂掉强。
+fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 /// 后台线程里的东西。
 struct WatchLoop {
     options: WatchOptions,
     events: Sender<Event>,
-    state: State,
+    /// 状态机，和 [`Watcher`] 共用一份。
+    state: Arc<Mutex<State>>,
+    /// 用户手选的游戏目录，优先于 `options.game_dir`。
+    game_dir: Arc<Mutex<Option<PathBuf>>>,
     tail: LogTail,
     /// 已经处理过的截图文件名。
     seen_shots: HashSet<OsString>,
@@ -180,11 +221,14 @@ impl WatchLoop {
         options: WatchOptions,
         events: Sender<Event>,
         map_mismatches: Arc<Mutex<Vec<(String, String)>>>,
+        state: Arc<Mutex<State>>,
+        game_dir: Arc<Mutex<Option<PathBuf>>>,
     ) -> Self {
         Self {
             options,
             events,
-            state: State::new(),
+            state,
+            game_dir,
             tail: LogTail::new(),
             seen_shots: HashSet::new(),
             reported: None,
@@ -196,9 +240,11 @@ impl WatchLoop {
     fn run(&mut self, stop: &Receiver<()>) {
         let interval = self.options.poll_interval.max(Duration::from_millis(50));
 
-        // 第一步：找目录、报目录、把已有的截图记下来、读已有日志恢复状态。
-        self.refresh_dirs();
+        // 顺序要紧：先把已有的截图登记下来，再找目录、读日志。
+        // 读日志会立刻报出对局开始（`refresh_dirs` 换日志目录时就会读一遍），
+        // 界面收到就开始拍截图，晚一步登记就会把刚拍的那张当成旧文件吞掉。
         self.prime_screenshots();
+        self.refresh_dirs();
         self.poll_log();
 
         loop {
@@ -235,11 +281,16 @@ impl WatchLoop {
             .or_else(paths::default_screenshot_dir)
             .filter(|p| p.is_dir());
 
-        let game_dir = self
-            .options
-            .game_dir
-            .clone()
-            .or_else(|| screenshot_dir.as_deref().and_then(paths::game_dir_from_screenshot_dir))
+        // 用户手选的 > 启动时给的 > 系统里的（Windows 注册表）> 从截图目录反推。
+        let picked = lock(&self.game_dir).clone();
+        let game_dir = picked
+            .or_else(|| self.options.game_dir.clone())
+            .or_else(paths::default_game_dir)
+            .or_else(|| {
+                screenshot_dir
+                    .as_deref()
+                    .and_then(paths::game_dir_from_screenshot_dir)
+            })
             .filter(|p| p.is_dir());
 
         let log_dir = game_dir
@@ -256,8 +307,11 @@ impl WatchLoop {
             let (game_dir_s, screenshot_dir_s, log_dir_s) = dirs.to_strings();
             // 先把目录交出去，再交日志读出来的事件：界面先知道日志在哪，再收到状态。
             let time = Timestamp::now_local();
-            self.state
-                .set_paths(game_dir_s.clone(), screenshot_dir_s.clone(), log_dir_s.clone());
+            lock(&self.state).set_paths(
+                game_dir_s.clone(),
+                screenshot_dir_s.clone(),
+                log_dir_s.clone(),
+            );
             self.reported = Some(dirs.clone());
             self.emit(vec![Event::Paths {
                 time,
@@ -285,7 +339,7 @@ impl WatchLoop {
             return;
         };
         let time = Timestamp::now_local();
-        let ended = self.state.start_game_session(time);
+        let ended = lock(&self.state).start_game_session(time);
         self.emit(ended);
         self.tail.switch_to(&file);
         if self.options.start == LogStart::Now {
@@ -299,8 +353,17 @@ impl WatchLoop {
     /// 不这样做的话，一启动就会把几百张历史截图重放一遍。只登记一次，
     /// 所以截图目录如果是在监听开始之后才建出来的（游戏拍第一张截图时建），
     /// 里面那张会被当成新文件处理。
+    ///
+    /// 目录自己找，不看 [`Self::reported`]：登记得赶在第一条日志事件之前（见 [`Self::run`]），
+    /// 那会儿目录还没报出去。
     fn prime_screenshots(&mut self) {
-        let Some(dir) = self.reported.as_ref().and_then(|d| d.screenshot_dir.clone()) else {
+        let dir = self
+            .options
+            .screenshot_dir
+            .clone()
+            .or_else(paths::default_screenshot_dir)
+            .filter(|p| p.is_dir());
+        let Some(dir) = dir else {
             return;
         };
         let Ok(entries) = fs::read_dir(&dir) else {
@@ -316,7 +379,11 @@ impl WatchLoop {
     /// 新文件按文件名排序处理：文件名开头就是日期和时分，所以基本就是时间顺序；
     /// 同一分钟里的几张分不出先后，只能按名字排。
     fn poll_screenshots(&mut self) {
-        let Some(dir) = self.reported.as_ref().and_then(|d| d.screenshot_dir.clone()) else {
+        let Some(dir) = self
+            .reported
+            .as_ref()
+            .and_then(|d| d.screenshot_dir.clone())
+        else {
             return;
         };
         let Ok(entries) = fs::read_dir(&dir) else {
@@ -344,7 +411,7 @@ impl WatchLoop {
             let Some(shot) = parse_screenshot_name(&name_str) else {
                 continue;
             };
-            let events = self.state.on_screenshot(&shot);
+            let events = lock(&self.state).on_screenshot(&shot);
             self.emit(events);
         }
     }
@@ -352,7 +419,7 @@ impl WatchLoop {
     /// 读日志新增的部分。
     fn poll_log(&mut self) {
         for record in self.tail.poll() {
-            let events = self.state.on_log(record.time, &record.kind);
+            let events = lock(&self.state).on_log(record.time, &record.kind);
             self.emit(events);
             self.publish_map_mismatches();
         }
@@ -360,7 +427,8 @@ impl WatchLoop {
 
     /// 状态机新记下的"预设名和地点名对不上"的对，转给 [`Watcher::map_mismatches`]。
     fn publish_map_mismatches(&mut self) {
-        let all = self.state.map_mismatches();
+        let state = lock(&self.state);
+        let all = state.map_mismatches();
         if all.len() <= self.published_mismatches {
             return;
         }
@@ -419,7 +487,9 @@ mod tests {
         let root = tmp_root("recover");
         let shots = root.join("Escape from Tarkov").join("Screenshots");
         fs::create_dir_all(&shots).unwrap();
-        let log_dir = root.join("Logs").join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        let log_dir = root
+            .join("Logs")
+            .join("log_2026.11.15_17-46-54_1.3.0.2.48779");
         fs::create_dir_all(&log_dir).unwrap();
         let log = log_dir.join("application.log");
         let mut text = String::new();
@@ -428,7 +498,10 @@ mod tests {
             "2026-11-15 17:53:17.104",
             "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
         );
-        text += &line("2026-11-15 18:00:40.493", "GameStarted:293.32(293.32) real:315.92(315.92) diff:22.6");
+        text += &line(
+            "2026-11-15 18:00:40.493",
+            "GameStarted:293.32(293.32) real:315.92(315.92) diff:22.6",
+        );
         fs::write(&log, text).unwrap();
 
         // 启动前就有的截图不算新文件。
@@ -446,14 +519,24 @@ mod tests {
             |evs| evs.iter().any(|e| matches!(e, Event::RaidStarted { .. })),
             Duration::from_secs(5),
         );
-        assert!(matches!(events.first(), Some(Event::Paths { .. })), "{events:?}");
-        assert!(events
-            .iter()
-            .any(|e| matches!(e, Event::Session { mode: Mode::PvpSeason, .. })));
+        assert!(
+            matches!(events.first(), Some(Event::Paths { .. })),
+            "{events:?}"
+        );
+        assert!(events.iter().any(|e| matches!(
+            e,
+            Event::Session {
+                mode: Mode::PvpSeason,
+                ..
+            }
+        )));
         assert!(events
             .iter()
             .any(|e| matches!(e, Event::RaidLoading { map, .. } if map == "bigmap")));
-        assert!(!events.iter().any(|e| matches!(e, Event::Position { .. })), "{events:?}");
+        assert!(
+            !events.iter().any(|e| matches!(e, Event::Position { .. })),
+            "{events:?}"
+        );
 
         // 新截图。
         fs::write(shots.join(shot_name("2026-11-15[18-02]", -232.18)), b"x").unwrap();
@@ -473,14 +556,22 @@ mod tests {
 
         // 新日志行。
         let mut f = fs::OpenOptions::new().append(true).open(&log).unwrap();
-        write!(f, "{}", line("2026-11-15 18:34:47.489", "Disposing BEClient")).unwrap();
+        write!(
+            f,
+            "{}",
+            line("2026-11-15 18:34:47.489", "Disposing BEClient")
+        )
+        .unwrap();
         drop(f);
         let events = collect(
             &w,
             |evs| evs.iter().any(|e| matches!(e, Event::RaidEnded { .. })),
             Duration::from_secs(5),
         );
-        assert!(events.iter().any(|e| matches!(e, Event::RaidEnded { .. })), "{events:?}");
+        assert!(
+            events.iter().any(|e| matches!(e, Event::RaidEnded { .. })),
+            "{events:?}"
+        );
 
         w.stop();
         fs::remove_dir_all(&root).unwrap();
@@ -491,7 +582,9 @@ mod tests {
         let root = tmp_root("switch");
         let shots = root.join("Escape from Tarkov").join("Screenshots");
         fs::create_dir_all(&shots).unwrap();
-        let old_dir = root.join("Logs").join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        let old_dir = root
+            .join("Logs")
+            .join("log_2026.11.15_17-46-54_1.3.0.2.48779");
         fs::create_dir_all(&old_dir).unwrap();
         let mut text = String::new();
         text += &line("2026-11-15 17:47:10.253", "Session mode: Pve");
@@ -499,7 +592,10 @@ mod tests {
             "2026-11-15 17:53:17.104",
             "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
         );
-        text += &line("2026-11-15 18:00:40.493", "GameStarted:293.32(293.32) real:315.92(315.92) diff:22.6");
+        text += &line(
+            "2026-11-15 18:00:40.493",
+            "GameStarted:293.32(293.32) real:315.92(315.92) diff:22.6",
+        );
         fs::write(old_dir.join("application.log"), text).unwrap();
 
         let w = Watcher::start(
@@ -513,10 +609,17 @@ mod tests {
             |evs| evs.iter().any(|e| matches!(e, Event::RaidStarted { .. })),
             Duration::from_secs(5),
         );
-        assert!(events.iter().any(|e| matches!(e, Event::RaidStarted { .. })), "{events:?}");
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, Event::RaidStarted { .. })),
+            "{events:?}"
+        );
 
         // 游戏重启：新目录。上一局没收到 Disposing，也要补一个 raid_ended。
-        let new_dir = root.join("Logs").join("log_2026.11.15_19-00-00_1.3.0.2.48779");
+        let new_dir = root
+            .join("Logs")
+            .join("log_2026.11.15_19-00-00_1.3.0.2.48779");
         fs::create_dir_all(&new_dir).unwrap();
         fs::write(
             new_dir.join("application.log"),
@@ -527,15 +630,26 @@ mod tests {
         let events = collect(
             &w,
             |evs| {
-                evs.iter()
-                    .any(|e| matches!(e, Event::Session { mode: Mode::PvpSeason, .. }))
+                evs.iter().any(|e| {
+                    matches!(
+                        e,
+                        Event::Session {
+                            mode: Mode::PvpSeason,
+                            ..
+                        }
+                    )
+                })
             },
             Duration::from_secs(5),
         );
         assert!(
-            events
-                .iter()
-                .any(|e| matches!(e, Event::Session { mode: Mode::PvpSeason, .. })),
+            events.iter().any(|e| matches!(
+                e,
+                Event::Session {
+                    mode: Mode::PvpSeason,
+                    ..
+                }
+            )),
             "{events:?}"
         );
         assert!(
@@ -560,7 +674,9 @@ mod tests {
         let root = tmp_root("late-log");
         let shots = root.join("Escape from Tarkov").join("Screenshots");
         fs::create_dir_all(&shots).unwrap();
-        let log_dir = root.join("Logs").join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        let log_dir = root
+            .join("Logs")
+            .join("log_2026.11.15_17-46-54_1.3.0.2.48779");
         fs::create_dir_all(&log_dir).unwrap();
 
         let w = Watcher::start(
@@ -574,7 +690,10 @@ mod tests {
             |evs| evs.iter().any(|e| matches!(e, Event::Paths { .. })),
             Duration::from_secs(5),
         );
-        assert!(events.iter().any(|e| matches!(e, Event::Paths { .. })), "{events:?}");
+        assert!(
+            events.iter().any(|e| matches!(e, Event::Paths { .. })),
+            "{events:?}"
+        );
 
         fs::write(
             log_dir.join("application.log"),
@@ -587,7 +706,13 @@ mod tests {
             Duration::from_secs(5),
         );
         assert!(
-            events.iter().any(|e| matches!(e, Event::Session { mode: Mode::Pve, .. })),
+            events.iter().any(|e| matches!(
+                e,
+                Event::Session {
+                    mode: Mode::Pve,
+                    ..
+                }
+            )),
             "{events:?}"
         );
 
@@ -601,7 +726,9 @@ mod tests {
         let root = tmp_root("mismatch");
         let shots = root.join("Escape from Tarkov").join("Screenshots");
         fs::create_dir_all(&shots).unwrap();
-        let log_dir = root.join("Logs").join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        let log_dir = root
+            .join("Logs")
+            .join("log_2026.11.15_17-46-54_1.3.0.2.48779");
         fs::create_dir_all(&log_dir).unwrap();
         let mut text = String::new();
         text += &line(
@@ -635,10 +762,16 @@ mod tests {
         // 进局记录读进来之后，这一对应该出现在 map_mismatches 里。
         let deadline = Instant::now() + Duration::from_secs(5);
         loop {
-            if w.map_mismatches() == vec![("Some_New_Preset".to_string(), "TarkovStreets".to_string())] {
+            if w.map_mismatches()
+                == vec![("Some_New_Preset".to_string(), "TarkovStreets".to_string())]
+            {
                 break;
             }
-            assert!(Instant::now() < deadline, "没等到对照表缺口：{:?}", w.map_mismatches());
+            assert!(
+                Instant::now() < deadline,
+                "没等到对照表缺口：{:?}",
+                w.map_mismatches()
+            );
             thread::sleep(Duration::from_millis(20));
         }
 
@@ -662,7 +795,10 @@ mod tests {
             |evs| evs.iter().any(|e| matches!(e, Event::Paths { .. })),
             Duration::from_secs(5),
         );
-        assert!(events.iter().any(|e| matches!(e, Event::Paths { .. })), "{events:?}");
+        assert!(
+            events.iter().any(|e| matches!(e, Event::Paths { .. })),
+            "{events:?}"
+        );
 
         fs::create_dir_all(&shots).unwrap();
         fs::write(shots.join(shot_name("2026-11-15[18-02]", -232.18)), b"x").unwrap();
@@ -672,8 +808,148 @@ mod tests {
             Duration::from_secs(5),
         );
         assert!(
-            events.iter().any(|e| matches!(e, Event::Position { x, .. } if *x == -232.18)),
+            events
+                .iter()
+                .any(|e| matches!(e, Event::Position { x, .. } if *x == -232.18)),
             "{events:?}"
+        );
+
+        w.stop();
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn snapshot_is_the_same_state_the_events_come_from() {
+        let root = tmp_root("snapshot");
+        let shots = root.join("Escape from Tarkov").join("Screenshots");
+        fs::create_dir_all(&shots).unwrap();
+        let log_dir = root
+            .join("Logs")
+            .join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        fs::create_dir_all(&log_dir).unwrap();
+        let mut text = String::new();
+        text += &line("2026-11-15 17:47:10.253", "Session mode: Pve");
+        text += &line(
+            "2026-11-15 17:53:17.104",
+            "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
+        );
+        text += &line(
+            "2026-11-15 18:00:40.493",
+            "GameStarted:293.32(293.32) real:315.92(315.92) diff:22.6",
+        );
+        fs::write(log_dir.join("application.log"), text).unwrap();
+
+        let w = Watcher::start(
+            WatchOptions::default()
+                .game_dir(&root)
+                .screenshot_dir(&shots)
+                .poll_interval(Duration::from_millis(50)),
+        );
+        collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::RaidStarted { .. })),
+            Duration::from_secs(5),
+        );
+
+        // 快照要从还没收到事件的时候就能取到（界面启动时先 invoke 一次）。
+        let snap = w.snapshot();
+        assert_eq!(
+            snap.paths.game_dir.as_deref(),
+            Some(paths::path_to_string(&root).as_str())
+        );
+        assert_eq!(snap.mode, Some(Mode::Pve));
+        let raid = snap.raid.expect("快照里应该有当前对局");
+        assert_eq!(raid.map, "bigmap");
+        assert!(raid.started);
+        assert!(!raid.scav);
+        assert_eq!(
+            raid.started_at.map(|t| t.to_string()).as_deref(),
+            Some("2026-11-15T18:00:40.493")
+        );
+        assert!(snap.position.is_none());
+        assert!(snap.trail.is_empty());
+
+        // 新截图进来后，快照跟着变。
+        fs::write(shots.join(shot_name("2026-11-15[18-02]", -232.18)), b"x").unwrap();
+        collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::Position { .. })),
+            Duration::from_secs(5),
+        );
+        let snap = w.snapshot();
+        let position = snap.position.expect("快照里应该有定位");
+        assert_eq!(position.x, -232.18);
+        assert_eq!(snap.trail.len(), 1);
+        assert_eq!(snap.trail[0].x, -232.18);
+
+        w.stop();
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn set_game_dir_switches_where_the_logs_come_from() {
+        // 一开始游戏目录是空的（没装游戏、或者装在我们不知道的地方）。
+        let root = tmp_root("pick-dir");
+        let shots = root.join("Escape from Tarkov").join("Screenshots");
+        fs::create_dir_all(&shots).unwrap();
+        let w = Watcher::start(
+            WatchOptions::default()
+                .screenshot_dir(&shots)
+                .poll_interval(Duration::from_millis(50)),
+        );
+        let events = collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::Paths { .. })),
+            Duration::from_secs(5),
+        );
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, Event::Paths { log_dir: None, .. })),
+            "一开始没有游戏目录：{events:?}"
+        );
+
+        // 用户在界面上手选了游戏目录。
+        let picked = root.join("EFT");
+        let log_dir = picked
+            .join("Logs")
+            .join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        fs::create_dir_all(&log_dir).unwrap();
+        fs::write(
+            log_dir.join("application.log"),
+            line("2026-11-15 17:47:10.253", "Session mode: Pve"),
+        )
+        .unwrap();
+        w.set_game_dir(Some(picked.clone()));
+
+        let events = collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::Session { .. })),
+            Duration::from_secs(5),
+        );
+        let picked_str = paths::path_to_string(&picked);
+        let log_str = paths::path_to_string(&log_dir);
+        assert!(
+            events.iter().any(|e| matches!(
+                e,
+                Event::Paths { game_dir: Some(g), log_dir: Some(l), .. }
+                    if *g == picked_str && *l == log_str
+            )),
+            "{events:?}"
+        );
+        assert!(
+            events.iter().any(|e| matches!(
+                e,
+                Event::Session {
+                    mode: Mode::Pve,
+                    ..
+                }
+            )),
+            "{events:?}"
+        );
+        assert_eq!(
+            w.snapshot().paths.game_dir.as_deref(),
+            Some(picked_str.as_str())
         );
 
         w.stop();

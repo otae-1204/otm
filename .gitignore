@@ -8,3 +8,5 @@ app/node_modules/
 app/dist/
 # Rust 构建产物
 target/
+shell/node_modules/
+shell/src-tauri/gen/

@@ -1,6 +1,7 @@
 //! 找目录：截图目录、游戏目录、`Logs` 下最新的日志目录。
 //!
-//! 只用文件系统，不碰注册表、不碰游戏进程。路径用 [`std::path`] 拼，不写死分隔符。
+//! 只用文件系统和系统接口（Windows 上读注册表、问系统"文档"在哪），不碰游戏进程。
+//! 路径用 [`std::path`] 拼，不写死分隔符。
 
 use std::ffi::OsString;
 use std::fs;
@@ -34,22 +35,31 @@ pub fn path_to_string(path: &Path) -> String {
 
 /// 默认的截图目录：`<文档>/Escape from Tarkov/Screenshots`。
 ///
-/// Windows 上优先读 `USERPROFILE\Documents`，其次 `USERPROFILE\OneDrive\Documents`
-/// （文档被 OneDrive 接管时在那里）。别的系统上用 `$HOME/Documents`。
+/// "文档"用系统接口问（见 [`documents_dir`]），不拼 `C:\Users\...`。
 /// 只返回真实存在的目录。
 pub fn default_screenshot_dir() -> Option<PathBuf> {
+    let dir = documents_dir()?
+        .join("Escape from Tarkov")
+        .join("Screenshots");
+    dir.is_dir().then(|| clean_path(&dir))
+}
+
+/// 系统里的"文档"目录。
+///
+/// Windows 上走 `SHGetKnownFolderPath(FOLDERID_Documents)`（`dirs` 包了一层），
+/// 文档被 OneDrive 接管、被组策略改到别的盘时都跟着走。别的系统上走 XDG。
+/// 系统接口没给出来（少见）时退回用户主目录下的常见位置。
+pub fn documents_dir() -> Option<PathBuf> {
+    if let Some(dir) = dirs::document_dir() {
+        return Some(dir);
+    }
     let home = home_dir()?;
-    let candidates = [
-        home.join("Documents").join("Escape from Tarkov").join("Screenshots"),
-        home.join("OneDrive")
-            .join("Documents")
-            .join("Escape from Tarkov")
-            .join("Screenshots"),
-    ];
-    candidates
-        .into_iter()
-        .find(|p| p.is_dir())
-        .map(|p| clean_path(&p))
+    [
+        home.join("Documents"),
+        home.join("OneDrive").join("Documents"),
+    ]
+    .into_iter()
+    .find(|p| p.is_dir())
 }
 
 /// 用户主目录。
@@ -58,6 +68,63 @@ pub fn home_dir() -> Option<PathBuf> {
     std::env::var_os(var)
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
+}
+
+/// 默认的游戏目录：Windows 上读注册表里 EFT 的安装位置。
+///
+/// 键是 `HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov`
+/// （EFT 的安装程序是 32 位的，所以落在 `WOW6432Node` 下），值是 `InstallLocation`。
+/// 只返回真实存在的目录；别的系统上没有这个概念，返回 `None`。
+///
+/// 查到一次就记住：游戏是 otm 跑起来之后才装上的话，得重开 otm 才认。
+pub fn default_game_dir() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        use std::sync::OnceLock;
+
+        static CACHE: OnceLock<PathBuf> = OnceLock::new();
+        if let Some(dir) = CACHE.get() {
+            return Some(dir.clone());
+        }
+        let dir = game_dir_from_registry()?;
+        // 两个线程同时查到同一个目录时 set 会失败，值一样，不用管。
+        let _ = CACHE.set(dir.clone());
+        Some(dir)
+    }
+    #[cfg(not(windows))]
+    {
+        None
+    }
+}
+
+/// 从注册表读 EFT 的安装目录。键不在、值不在、目录不存在都返回 `None`。
+#[cfg(windows)]
+fn game_dir_from_registry() -> Option<PathBuf> {
+    use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_READ};
+    use winreg::RegKey;
+
+    /// EFT 的卸载信息。32 位安装程序写在 `WOW6432Node` 下，
+    /// 64 位的那份也看一眼，免得以后换了安装程序就不认。
+    const KEYS: [&str; 2] = [
+        r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov",
+        r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\EscapeFromTarkov",
+    ];
+
+    let machine = RegKey::predef(HKEY_LOCAL_MACHINE);
+    for key in KEYS {
+        let Ok(key) = machine.open_subkey_with_flags(key, KEY_READ) else {
+            continue;
+        };
+        let Ok(install) = key.get_value::<String, _>("InstallLocation") else {
+            continue;
+        };
+        // 有的安装程序会在值里带引号，末尾可能带分隔符。
+        let dir = clean_path(Path::new(install.trim().trim_matches('"')));
+        if dir.is_dir() {
+            return Some(dir);
+        }
+    }
+    None
 }
 
 /// 从截图目录反推游戏目录：`<文档>/Escape from Tarkov/Screenshots` 往上一级是
@@ -158,7 +225,9 @@ pub fn application_log_file(log_dir: &Path) -> Option<PathBuf> {
             continue;
         }
         let name = entry.file_name();
-        if name.to_string_lossy().starts_with("application") && found.as_ref().is_none_or(|f| name > *f) {
+        if name.to_string_lossy().starts_with("application")
+            && found.as_ref().is_none_or(|f| name > *f)
+        {
             found = Some(name);
         }
     }
@@ -196,7 +265,17 @@ mod tests {
     #[test]
     fn path_strings_use_forward_slashes() {
         assert_eq!(path_to_string(Path::new(r"C:\EFT\Logs")), "C:/EFT/Logs");
-        assert_eq!(path_to_string(Path::new("/home/otae/EFT")), "/home/otae/EFT");
+        assert_eq!(
+            path_to_string(Path::new("/home/otae/EFT")),
+            "/home/otae/EFT"
+        );
+    }
+
+    /// 注册表只在 Windows 上有，别的系统上找游戏目录这条路要干脆地空着。
+    #[cfg(not(windows))]
+    #[test]
+    fn no_game_dir_from_registry_off_windows() {
+        assert_eq!(default_game_dir(), None);
     }
 
     #[test]
@@ -228,7 +307,10 @@ mod tests {
         fs::write(root.join("notepad.log"), "x").unwrap();
         assert!(application_log_file(&root).is_none());
         fs::write(root.join("application.log"), "x").unwrap();
-        assert_eq!(application_log_file(&root).unwrap(), root.join("application.log"));
+        assert_eq!(
+            application_log_file(&root).unwrap(),
+            root.join("application.log")
+        );
         // 没有 application.log 时取名字最大的那个轮换文件。
         fs::remove_file(root.join("application.log")).unwrap();
         fs::write(root.join("application_2026.11.14.log"), "x").unwrap();

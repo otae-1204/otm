@@ -1,0 +1,14 @@
+{
+  "name": "otm-shell",
+  "private": true,
+  "version": "0.1.0",
+  "description": "otm 的桌面外壳：Tauri 2 包住 app/ 的界面和 core/ 的监听",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4"
+  }
+}

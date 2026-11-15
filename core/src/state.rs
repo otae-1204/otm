@@ -22,8 +22,8 @@
 //!   同一分钟里的一张截图可能比前一条日志定位的时间早不到一分钟。
 
 use crate::event::{
-    Event, Mode, PositionSource, RaidMode, Snapshot, SnapshotPaths, SnapshotPosition,
-    SnapshotRaid, TrailPoint,
+    Event, Mode, PositionSource, RaidMode, Snapshot, SnapshotPaths, SnapshotPosition, SnapshotRaid,
+    TrailPoint,
 };
 use crate::log::LogLine;
 use crate::maps::location_from_preset;
@@ -495,8 +495,17 @@ mod tests {
     /// 走到"地图已知、对局已开始"。
     fn into_raid(state: &mut State, map: &str, profile: &str) -> Vec<Event> {
         feed_log(state, &line("2026-11-15 17:53:17.104", &scene(map)));
-        feed_log(state, &line("2026-11-15 17:58:38.249", &game_create(profile, "Online")));
-        feed_log(state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"))
+        feed_log(
+            state,
+            &line("2026-11-15 17:58:38.249", &game_create(profile, "Online")),
+        );
+        feed_log(
+            state,
+            &line(
+                "2026-11-15 18:00:40.493",
+                "GameStarted:1(1) real:2(2) diff:3",
+            ),
+        )
     }
 
     #[test]
@@ -504,7 +513,10 @@ mod tests {
         let mut state = State::new();
         feed_log(
             &mut state,
-            &line("2026-11-15 17:47:56.021", &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000")),
+            &line(
+                "2026-11-15 17:47:56.021",
+                &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000"),
+            ),
         );
         let events = into_raid(&mut state, "bigmap", SCAV);
         assert_eq!(
@@ -523,7 +535,10 @@ mod tests {
         let mut state = State::new();
         feed_log(
             &mut state,
-            &line("2026-11-15 17:47:56.021", &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000")),
+            &line(
+                "2026-11-15 17:47:56.021",
+                &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000"),
+            ),
         );
         let events = into_raid(&mut state, "bigmap", PMC);
         match events.last() {
@@ -548,7 +563,10 @@ mod tests {
         let mut state = State::new();
         feed_log(
             &mut state,
-            &line("2026-11-15 17:47:56.021", &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000")),
+            &line(
+                "2026-11-15 17:47:56.021",
+                &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000"),
+            ),
         );
         let events = into_raid(&mut state, "bigmap", "bbbbbbbbbbbbbbbbbbbb0000");
         match events.last() {
@@ -563,16 +581,28 @@ mod tests {
         assert_eq!(hex_increment("0f").unwrap(), "10");
         // 全 F 时长度不变就装不下，返回 None。
         assert_eq!(hex_increment("ff"), None);
-        assert!(is_one_more("aaaaaaaaaaaaaaaaaaaa5f82", "aaaaaaaaaaaaaaaaaaaa5f81"));
-        assert!(!is_one_more("aaaaaaaaaaaaaaaaaaaa5f81", "aaaaaaaaaaaaaaaaaaaa5f81"));
-        assert!(!is_one_more("bbbbbbbbbbbbbbbbbbbb5f82", "aaaaaaaaaaaaaaaaaaaa5f81"));
+        assert!(is_one_more(
+            "aaaaaaaaaaaaaaaaaaaa5f82",
+            "aaaaaaaaaaaaaaaaaaaa5f81"
+        ));
+        assert!(!is_one_more(
+            "aaaaaaaaaaaaaaaaaaaa5f81",
+            "aaaaaaaaaaaaaaaaaaaa5f81"
+        ));
+        assert!(!is_one_more(
+            "bbbbbbbbbbbbbbbbbbbb5f82",
+            "aaaaaaaaaaaaaaaaaaaa5f81"
+        ));
         assert!(!is_one_more("zz", "aa"));
     }
 
     #[test]
     fn disposing_before_game_started_is_ignored() {
         let mut state = State::new();
-        feed_log(&mut state, &line("2026-11-15 17:48:13.422", "Disposing BEClient"));
+        feed_log(
+            &mut state,
+            &line("2026-11-15 17:48:13.422", "Disposing BEClient"),
+        );
         assert_eq!(state.snapshot().raid, None);
     }
 
@@ -585,8 +615,16 @@ mod tests {
             "2026-11-15[18-02]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png",
         );
         assert_eq!(state.snapshot().trail.len(), 1);
-        let events = feed_log(&mut state, &line("2026-11-15 18:34:47.489", "Disposing BEClient"));
-        assert_eq!(events, vec![Event::RaidEnded { time: ts("2026-11-15T18:34:47.489") }]);
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-15 18:34:47.489", "Disposing BEClient"),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidEnded {
+                time: ts("2026-11-15T18:34:47.489")
+            }]
+        );
         let snap = state.snapshot();
         assert_eq!(snap.trail.len(), 0);
         assert_eq!(snap.raid, None);
@@ -603,11 +641,16 @@ mod tests {
             "2026-11-15[18-02]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png",
         );
         assert_eq!(state.snapshot().trail.len(), 1);
-        let events = feed_log(&mut state, &line("2026-11-15 18:18:10.277", &scene("factory4_day")));
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-15 18:18:10.277", &scene("factory4_day")),
+        );
         assert_eq!(
             events,
             vec![
-                Event::RaidEnded { time: ts("2026-11-15T18:18:10.277") },
+                Event::RaidEnded {
+                    time: ts("2026-11-15T18:18:10.277")
+                },
                 Event::RaidLoading {
                     time: ts("2026-11-15T18:18:10.277"),
                     map: "factory4_day".into()
@@ -637,9 +680,15 @@ mod tests {
 
         feed_log(
             &mut state,
-            &line("2026-11-12 20:16:23.863", &game_create_at(PMC, "Online", "Interchange")),
+            &line(
+                "2026-11-12 20:16:23.863",
+                &game_create_at(PMC, "Online", "Interchange"),
+            ),
         );
-        let events = feed_log(&mut state, &line("2026-11-12 20:18:49.379", "GameStarted:1(1)"));
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-12 20:18:49.379", "GameStarted:1(1)"),
+        );
         assert_eq!(
             events,
             vec![Event::RaidStarted {
@@ -672,14 +721,20 @@ mod tests {
 
         feed_log(
             &mut state,
-            &line("2026-11-15 17:58:38.249", &game_create_at(PMC, "Online", "factory4_day")),
+            &line(
+                "2026-11-15 17:58:38.249",
+                &game_create_at(PMC, "Online", "factory4_day"),
+            ),
         );
         assert_eq!(
             state.map_mismatches(),
             &[("Some_New_Preset".to_string(), "factory4_day".to_string())]
         );
 
-        let events = feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1)"));
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-15 18:00:40.493", "GameStarted:1(1)"),
+        );
         match events.last() {
             Some(Event::RaidStarted { map, .. }) => assert_eq!(map, "factory4_day"),
             other => panic!("{other:?}"),
@@ -690,31 +745,57 @@ mod tests {
     fn the_same_unmapped_preset_is_recorded_once() {
         let mut state = State::new();
         for _ in 0..2 {
-            feed_log(&mut state, &line("2026-11-15 17:53:17.104", &scene("Some_New_Preset")));
             feed_log(
                 &mut state,
-                &line("2026-11-15 17:58:38.249", &game_create_at(PMC, "Online", "factory4_day")),
+                &line("2026-11-15 17:53:17.104", &scene("Some_New_Preset")),
             );
-            feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1)"));
-            feed_log(&mut state, &line("2026-11-15 18:30:00.000", "Disposing BEClient"));
+            feed_log(
+                &mut state,
+                &line(
+                    "2026-11-15 17:58:38.249",
+                    &game_create_at(PMC, "Online", "factory4_day"),
+                ),
+            );
+            feed_log(
+                &mut state,
+                &line("2026-11-15 18:00:40.493", "GameStarted:1(1)"),
+            );
+            feed_log(
+                &mut state,
+                &line("2026-11-15 18:30:00.000", "Disposing BEClient"),
+            );
         }
-        assert_eq!(state.map_mismatches().len(), 1, "{:?}", state.map_mismatches());
+        assert_eq!(
+            state.map_mismatches().len(),
+            1,
+            "{:?}",
+            state.map_mismatches()
+        );
     }
 
     #[test]
     fn a_mapped_preset_that_disagrees_with_the_raid_record_is_recorded() {
         // 表里说 Shopping_Mall 是 Interchange，日志却说是别的：以日志为准，并记下来。
         let mut state = State::new();
-        feed_log(&mut state, &line("2026-11-12 20:15:03.031", &scene("Shopping_Mall")));
         feed_log(
             &mut state,
-            &line("2026-11-12 20:16:23.863", &game_create_at(PMC, "Online", "Shopping_Mall")),
+            &line("2026-11-12 20:15:03.031", &scene("Shopping_Mall")),
+        );
+        feed_log(
+            &mut state,
+            &line(
+                "2026-11-12 20:16:23.863",
+                &game_create_at(PMC, "Online", "Shopping_Mall"),
+            ),
         );
         assert_eq!(
             state.map_mismatches(),
             &[("Shopping_Mall".to_string(), "Shopping_Mall".to_string())]
         );
-        let events = feed_log(&mut state, &line("2026-11-12 20:18:49.379", "GameStarted:1(1)"));
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-12 20:18:49.379", "GameStarted:1(1)"),
+        );
         match events.last() {
             Some(Event::RaidStarted { map, .. }) => assert_eq!(map, "Shopping_Mall"),
             other => panic!("{other:?}"),
@@ -724,9 +805,15 @@ mod tests {
     #[test]
     fn repeated_loading_of_the_same_map_is_one_event() {
         let mut state = State::new();
-        let first = feed_log(&mut state, &line("2026-11-15 17:53:17.104", &scene("bigmap")));
+        let first = feed_log(
+            &mut state,
+            &line("2026-11-15 17:53:17.104", &scene("bigmap")),
+        );
         assert_eq!(first.len(), 1);
-        let second = feed_log(&mut state, &line("2026-11-15 17:55:28.231", &scene("bigmap")));
+        let second = feed_log(
+            &mut state,
+            &line("2026-11-15 17:55:28.231", &scene("bigmap")),
+        );
         assert!(second.is_empty(), "{second:?}");
     }
 
@@ -735,7 +822,10 @@ mod tests {
         let mut state = State::new();
         let events = feed_log(
             &mut state,
-            &line("2026-11-15 18:00:40.485", "Reason:Lift, Position:(1.0, 2.0, 3.0), SpeedLimit:0.6"),
+            &line(
+                "2026-11-15 18:00:40.485",
+                "Reason:Lift, Position:(1.0, 2.0, 3.0), SpeedLimit:0.6",
+            ),
         );
         assert!(events.is_empty());
     }
@@ -744,10 +834,16 @@ mod tests {
     fn log_position_needs_game_started() {
         // 地图已知但还没 GameStarted：出生点那条不算。
         let mut state = State::new();
-        feed_log(&mut state, &line("2026-11-15 17:53:17.104", &scene("bigmap")));
+        feed_log(
+            &mut state,
+            &line("2026-11-15 17:53:17.104", &scene("bigmap")),
+        );
         let events = feed_log(
             &mut state,
-            &line("2026-11-15 18:00:40.485", "Reason:Lift, Position:(1.0, 2.0, 3.0), SpeedLimit:0.6"),
+            &line(
+                "2026-11-15 18:00:40.485",
+                "Reason:Lift, Position:(1.0, 2.0, 3.0), SpeedLimit:0.6",
+            ),
         );
         assert!(events.is_empty());
         assert!(state.snapshot().trail.is_empty());
@@ -758,12 +854,21 @@ mod tests {
         let mut state = State::new();
         into_raid(&mut state, "bigmap", PMC);
         let p = "Reason:PacketsQueue, Position:(351.830, 1.268, -60.684), SpeedLimit:0.6";
-        assert_eq!(feed_log(&mut state, &line("2026-11-15 18:24:17.607", p)).len(), 1);
+        assert_eq!(
+            feed_log(&mut state, &line("2026-11-15 18:24:17.607", p)).len(),
+            1
+        );
         // 同一坐标、同一时刻的重复行只算一次。
-        assert_eq!(feed_log(&mut state, &line("2026-11-15 18:24:17.607", p)).len(), 0);
+        assert_eq!(
+            feed_log(&mut state, &line("2026-11-15 18:24:17.607", p)).len(),
+            0
+        );
         assert_eq!(state.snapshot().trail.len(), 1);
         // 同一坐标但时刻不同（真的没动）仍然算一次定位。
-        assert_eq!(feed_log(&mut state, &line("2026-11-15 18:24:18.815", p)).len(), 1);
+        assert_eq!(
+            feed_log(&mut state, &line("2026-11-15 18:24:18.815", p)).len(),
+            1
+        );
         assert_eq!(state.snapshot().trail.len(), 2);
     }
 
@@ -773,7 +878,10 @@ mod tests {
         into_raid(&mut state, "bigmap", PMC);
         feed_log(
             &mut state,
-            &line("2026-11-15 18:10:00.000", "Reason:PacketsQueue, Position:(9.0, 9.0, 9.0)"),
+            &line(
+                "2026-11-15 18:10:00.000",
+                "Reason:PacketsQueue, Position:(9.0, 9.0, 9.0)",
+            ),
         );
         // 截图只精确到分钟：18:10 拍的截图时间记成 18:10:00，比上一条日志早 0 秒，
         // 但它确实是后到的，轨迹按到达顺序追加，位置也是它。
@@ -810,26 +918,43 @@ mod tests {
         let events = state.start_game_session(ts("2026-11-15T18:40:00.000"));
         assert_eq!(
             events,
-            vec![Event::RaidEnded { time: ts("2026-11-15T18:40:00.000") }]
+            vec![Event::RaidEnded {
+                time: ts("2026-11-15T18:40:00.000")
+            }]
         );
         let snap = state.snapshot();
         assert_eq!(snap.raid, None);
         assert!(snap.trail.is_empty());
 
         // 不在对局里时什么也不说。
-        assert!(state.start_game_session(ts("2026-11-15T18:41:00.000")).is_empty());
+        assert!(state
+            .start_game_session(ts("2026-11-15T18:41:00.000"))
+            .is_empty());
     }
 
     #[test]
     fn session_mode_is_reported_once() {
         let mut state = State::new();
-        let first = feed_log(&mut state, &line("2026-11-15 17:47:10.253", "Session mode: PvpSeason"));
+        let first = feed_log(
+            &mut state,
+            &line("2026-11-15 17:47:10.253", "Session mode: PvpSeason"),
+        );
         assert_eq!(
             first,
-            vec![Event::Session { time: ts("2026-11-15T17:47:10.253"), mode: Mode::PvpSeason }]
+            vec![Event::Session {
+                time: ts("2026-11-15T17:47:10.253"),
+                mode: Mode::PvpSeason
+            }]
         );
-        assert!(feed_log(&mut state, &line("2026-11-15 17:48:10.253", "Session mode: PvpSeason")).is_empty());
-        let changed = feed_log(&mut state, &line("2026-11-15 17:49:10.253", "Session mode: Pve"));
+        assert!(feed_log(
+            &mut state,
+            &line("2026-11-15 17:48:10.253", "Session mode: PvpSeason")
+        )
+        .is_empty());
+        let changed = feed_log(
+            &mut state,
+            &line("2026-11-15 17:49:10.253", "Session mode: Pve"),
+        );
         assert_eq!(changed.len(), 1);
     }
 
@@ -847,7 +972,10 @@ mod tests {
             .map(|e| match e {
                 Event::RaidLoading { .. } => "loading",
                 Event::RaidStarted { .. } => "started",
-                Event::Position { source: PositionSource::Screenshot, .. } => "shot",
+                Event::Position {
+                    source: PositionSource::Screenshot,
+                    ..
+                } => "shot",
                 Event::Position { .. } => "log",
                 _ => "other",
             })

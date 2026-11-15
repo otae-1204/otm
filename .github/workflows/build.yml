@@ -1,0 +1,100 @@
+name: build
+
+# 只在 main 上跑，或者手动点一下。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 同一分支上新的 push 顶掉还在跑的旧构建。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 核心和界面的回归：核心的测试、clippy，界面能不能编出来。
+  core:
+    name: 核心和界面
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core -> target
+
+      - name: 测试
+        working-directory: core
+        run: cargo test
+
+      - name: clippy
+        working-directory: core
+        run: cargo clippy --all-targets
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: 装界面依赖
+        working-directory: app
+        run: npm ci
+
+      - name: 编界面
+        working-directory: app
+        run: npm run build
+
+  # 打包成 Windows 程序。
+  windows:
+    name: 打包
+    needs: core
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            app/package-lock.json
+            shell/package-lock.json
+
+      # 装的是稳定版工具链；runner 自带 x86_64-pc-windows-msvc 目标。
+      - uses: dtolnay/rust-toolchain@stable
+
+      # 缓存 ~/.cargo 和 src-tauri/target，键里带 Cargo.lock 的哈希。
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: shell/src-tauri -> target
+
+      - name: 装界面依赖
+        working-directory: app
+        run: npm ci
+
+      - name: 装外壳依赖
+        working-directory: shell
+        run: npm ci
+
+      # 打包：先跑 beforeBuildCommand（app 的 npm run build），再编 Rust、出 NSIS 安装包。
+      - name: 打包
+        working-directory: shell
+        run: npm run build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: otm-windows-x64
+          path: |
+            shell/src-tauri/target/release/otm.exe
+            shell/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

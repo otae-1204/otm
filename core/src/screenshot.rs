@@ -172,8 +172,12 @@ mod tests {
         assert!(parse_screenshot_name("2026-11-15[15-24]_-1, 2_x, 0, 0, 1_1 (0).png").is_none());
         assert!(parse_screenshot_name("2026-11-15[15-24]_-1, 2, 3_0, 0, 1_1 (0).png").is_none());
         // 多一段或少一段数字都不算。
-        assert!(parse_screenshot_name("2026-11-15[15-24]_-1, 2, 3, 4_0, 0, 0, 1_1 (0).png").is_none());
-        assert!(parse_screenshot_name("2026-11-15[15-24]_-1, 2, 3_0, 0, 0, 1, 1_1 (0).png").is_none());
+        assert!(
+            parse_screenshot_name("2026-11-15[15-24]_-1, 2, 3, 4_0, 0, 0, 1_1 (0).png").is_none()
+        );
+        assert!(
+            parse_screenshot_name("2026-11-15[15-24]_-1, 2, 3_0, 0, 0, 1, 1_1 (0).png").is_none()
+        );
     }
 
     #[test]
@@ -259,22 +263,17 @@ mod tests {
             // v' = v + 2w(q×v) + 2q×(q×v)，v = (0, 0, 1)；这里用两次叉乘直接算。
             let (qx, qy, qz) = (x, y, z);
             let (vx, vy, vz) = (0.0, 0.0, 1.0);
-            let (cx, cy, cz) = (
-                qy * vz - qz * vy,
-                qz * vx - qx * vz,
-                qx * vy - qy * vx,
-            );
-            let (ccx, _ccy, ccz) = (
-                qy * cz - qz * cy,
-                qz * cx - qx * cz,
-                qx * cy - qy * cx,
-            );
+            let (cx, cy, cz) = (qy * vz - qz * vy, qz * vx - qx * vz, qx * vy - qy * vx);
+            let (ccx, _ccy, ccz) = (qy * cz - qz * cy, qz * cx - qx * cz, qx * cy - qy * cx);
             let fx = vx + 2.0 * w * cx + 2.0 * ccx;
             let fz = vz + 2.0 * w * cz + 2.0 * ccz;
             let expected = fx.atan2(fz).to_degrees().rem_euclid(360.0);
             let yaw = yaw_from_quaternion(x, y, z, w);
             let diff = ((yaw - expected + 180.0).rem_euclid(360.0)) - 180.0;
-            assert!(diff.abs() < 1e-9, "q = ({x}, {y}, {z}, {w}), yaw = {yaw}, expected = {expected}");
+            assert!(
+                diff.abs() < 1e-9,
+                "q = ({x}, {y}, {z}, {w}), yaw = {yaw}, expected = {expected}"
+            );
         }
     }
 }

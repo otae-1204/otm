@@ -10,7 +10,10 @@ use otm_core::state::State;
 use otm_core::time::Timestamp;
 
 fn fixture(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join(name)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join(name)
 }
 
 fn ts(s: &str) -> Timestamp {
@@ -35,10 +38,7 @@ fn milestones(events: &[Event]) -> Vec<Event> {
 
 #[test]
 fn season_session_milestones() {
-    let (events, _) = replay(
-        "season_session.application.log",
-        "screenshot_names.txt",
-    );
+    let (events, _) = replay("season_session.application.log", "screenshot_names.txt");
     assert_eq!(
         milestones(&events),
         vec![
@@ -78,10 +78,7 @@ fn season_session_milestones() {
 
 #[test]
 fn season_session_has_two_raids_on_bigmap() {
-    let (events, state) = replay(
-        "season_session.application.log",
-        "screenshot_names.txt",
-    );
+    let (events, state) = replay("season_session.application.log", "screenshot_names.txt");
     let started: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
@@ -89,9 +86,15 @@ fn season_session_has_two_raids_on_bigmap() {
             _ => None,
         })
         .collect();
-    assert_eq!(started, vec![("bigmap".to_string(), false), ("bigmap".to_string(), false)]);
+    assert_eq!(
+        started,
+        vec![("bigmap".to_string(), false), ("bigmap".to_string(), false)]
+    );
 
-    let ended = events.iter().filter(|e| matches!(e, Event::RaidEnded { .. })).count();
+    let ended = events
+        .iter()
+        .filter(|e| matches!(e, Event::RaidEnded { .. }))
+        .count();
     assert_eq!(ended, 2);
 
     // 日志在 18:34:47 离开对局，之后没有新的加载，所以最后没有进行中的对局。
@@ -101,10 +104,7 @@ fn season_session_has_two_raids_on_bigmap() {
 
 #[test]
 fn season_session_log_positions() {
-    let (events, _) = replay(
-        "season_session.application.log",
-        "screenshot_names.txt",
-    );
+    let (events, _) = replay("season_session.application.log", "screenshot_names.txt");
     let log_positions: Vec<(Timestamp, f64, f64, f64)> = events
         .iter()
         .filter_map(|e| match e {
@@ -145,10 +145,7 @@ fn season_session_log_positions() {
 
 #[test]
 fn season_session_screenshot_positions() {
-    let (events, _) = replay(
-        "season_session.application.log",
-        "screenshot_names.txt",
-    );
+    let (events, _) = replay("season_session.application.log", "screenshot_names.txt");
     let shots: Vec<_> = events
         .iter()
         .filter_map(|e| match e {
@@ -169,7 +166,10 @@ fn season_session_screenshot_positions() {
 
     // 第一张：2026-11-14[00-44]_117.47, 1.78, -264.17
     assert_eq!(shots[0].0, ts("2026-11-14T00:44:00.000"));
-    assert_eq!((shots[0].1, shots[0].2, shots[0].3), (117.47, 1.78, -264.17));
+    assert_eq!(
+        (shots[0].1, shots[0].2, shots[0].3),
+        (117.47, 1.78, -264.17)
+    );
     // 四元数 (-0.00566, -0.14087, 0.00132, -0.99001) 的偏航角约 16.20 度。
     assert!((shots[0].4 - 16.1963).abs() < 0.001, "yaw = {}", shots[0].4);
 
@@ -322,10 +322,7 @@ fn fixtures_need_no_extra_preset_mappings() {
 fn trail_holds_only_the_current_raid() {
     // 赛季日志：两局。第二局开始到结束之间没有截图（截图都在 11-14 和 11-15 白天），
     // 所以第二局的轨迹只有日志里的定位。
-    let (_, state) = replay(
-        "season_session.application.log",
-        "screenshot_names.txt",
-    );
+    let (_, state) = replay("season_session.application.log", "screenshot_names.txt");
     // 对局已结束，轨迹清空。
     assert!(state.snapshot().trail.is_empty());
 }
@@ -366,15 +363,14 @@ fn trail_is_sorted_and_complete_inside_a_raid() {
 
 #[test]
 fn every_event_time_is_iso_local() {
-    let (events, _) = replay(
-        "season_session.application.log",
-        "screenshot_names.txt",
-    );
+    let (events, _) = replay("season_session.application.log", "screenshot_names.txt");
     for e in &events {
         let s = serde_json::to_value(e).unwrap();
         let time = s["time"].as_str().unwrap();
         assert!(
-            time.len() == 23 && time.as_bytes()[10] == b'T' && time.ends_with(|c: char| c.is_ascii_digit()),
+            time.len() == 23
+                && time.as_bytes()[10] == b'T'
+                && time.ends_with(|c: char| c.is_ascii_digit()),
             "{time}"
         );
         assert_eq!(time.parse::<Timestamp>().unwrap().to_string(), time);
@@ -383,10 +379,7 @@ fn every_event_time_is_iso_local() {
 
 #[test]
 fn event_types_are_the_ones_in_the_contract() {
-    let (events, _) = replay(
-        "season_session.application.log",
-        "screenshot_names.txt",
-    );
+    let (events, _) = replay("season_session.application.log", "screenshot_names.txt");
     let types: HashSet<String> = events
         .iter()
         .map(|e| {

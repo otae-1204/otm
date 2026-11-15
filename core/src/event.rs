@@ -226,7 +226,10 @@ mod tests {
             mode: Mode::PvpSeason,
         };
         let s = serde_json::to_string(&e).unwrap();
-        assert_eq!(s, r#"{"type":"session","time":"2026-11-15T18:00:40.493","mode":"PvpSeason"}"#);
+        assert_eq!(
+            s,
+            r#"{"type":"session","time":"2026-11-15T18:00:40.493","mode":"PvpSeason"}"#
+        );
         assert_eq!(serde_json::from_str::<Event>(&s).unwrap(), e);
     }
 

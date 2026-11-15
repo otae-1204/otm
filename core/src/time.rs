@@ -71,8 +71,8 @@ impl Timestamp {
 
     /// 现在（本地墙上时间）。拿不到本地时区时退回 UTC。
     pub fn now_local() -> Self {
-        let now = time::OffsetDateTime::now_local()
-            .unwrap_or_else(|_| time::OffsetDateTime::now_utc());
+        let now =
+            time::OffsetDateTime::now_local().unwrap_or_else(|_| time::OffsetDateTime::now_utc());
         Self::from_ymd_hms_milli(
             now.year(),
             now.month() as u8,
@@ -83,7 +83,8 @@ impl Timestamp {
             now.millisecond(),
         )
         .unwrap_or_else(|| Self {
-            date: Date::from_calendar_date(1970, Month::January, 1).expect("1970 年 1 月 1 日总是合法的"),
+            date: Date::from_calendar_date(1970, Month::January, 1)
+                .expect("1970 年 1 月 1 日总是合法的"),
             time: Time::MIDNIGHT,
         })
     }
@@ -132,9 +133,21 @@ impl FromStr for Timestamp {
         let s = s.trim();
         let (date_part, time_part) = s.split_once(['T', 't', ' ']).ok_or(ParseTimestampError)?;
         let mut d = date_part.split('-');
-        let year: i32 = d.next().ok_or(ParseTimestampError)?.parse().map_err(|_| ParseTimestampError)?;
-        let month: u8 = d.next().ok_or(ParseTimestampError)?.parse().map_err(|_| ParseTimestampError)?;
-        let day: u8 = d.next().ok_or(ParseTimestampError)?.parse().map_err(|_| ParseTimestampError)?;
+        let year: i32 = d
+            .next()
+            .ok_or(ParseTimestampError)?
+            .parse()
+            .map_err(|_| ParseTimestampError)?;
+        let month: u8 = d
+            .next()
+            .ok_or(ParseTimestampError)?
+            .parse()
+            .map_err(|_| ParseTimestampError)?;
+        let day: u8 = d
+            .next()
+            .ok_or(ParseTimestampError)?
+            .parse()
+            .map_err(|_| ParseTimestampError)?;
         if d.next().is_some() {
             return Err(ParseTimestampError);
         }
@@ -144,8 +157,16 @@ impl FromStr for Timestamp {
             None => (time_part, None),
         };
         let mut t = clock_part.split(':');
-        let hour: u8 = t.next().ok_or(ParseTimestampError)?.parse().map_err(|_| ParseTimestampError)?;
-        let minute: u8 = t.next().ok_or(ParseTimestampError)?.parse().map_err(|_| ParseTimestampError)?;
+        let hour: u8 = t
+            .next()
+            .ok_or(ParseTimestampError)?
+            .parse()
+            .map_err(|_| ParseTimestampError)?;
+        let minute: u8 = t
+            .next()
+            .ok_or(ParseTimestampError)?
+            .parse()
+            .map_err(|_| ParseTimestampError)?;
         let second: u8 = match t.next() {
             Some(v) => v.parse().map_err(|_| ParseTimestampError)?,
             None => 0,
@@ -164,7 +185,8 @@ impl FromStr for Timestamp {
             }
         };
 
-        Self::from_ymd_hms_milli(year, month, day, hour, minute, second, milli).ok_or(ParseTimestampError)
+        Self::from_ymd_hms_milli(year, month, day, hour, minute, second, milli)
+            .ok_or(ParseTimestampError)
     }
 }
 
@@ -204,7 +226,13 @@ mod tests {
 
     #[test]
     fn rejects_garbage() {
-        for s in ["", "2026-11-15", "2026-13-01T00:00:00", "2026-11-15T25:00:00", "x"] {
+        for s in [
+            "",
+            "2026-11-15",
+            "2026-13-01T00:00:00",
+            "2026-11-15T25:00:00",
+            "x",
+        ] {
             assert!(s.parse::<Timestamp>().is_err(), "{s} 应该解析失败");
         }
     }

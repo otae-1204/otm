@@ -6,7 +6,10 @@ use std::process::Command;
 use otm_core::event::Event;
 
 fn fixture(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join(name)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join(name)
 }
 
 fn run_replay(log: &str, shots: &str) -> Vec<Event> {
@@ -40,7 +43,9 @@ fn replay_season_session() {
 
     // 第一行是 11-14 最早的那张截图。
     match &events[0] {
-        Event::Position { time, x, source, .. } => {
+        Event::Position {
+            time, x, source, ..
+        } => {
             assert_eq!(time.to_string(), "2026-11-14T00:44:00.000");
             assert_eq!(*x, 117.47);
             assert_eq!(*source, otm_core::event::PositionSource::Screenshot);
@@ -74,9 +79,9 @@ fn replay_pve_session() {
             mode: otm_core::event::Mode::Pve
         }
     );
-    assert!(events.iter().any(
-        |e| matches!(e, Event::RaidStarted { map, .. } if map == "Interchange")
-    ));
+    assert!(events
+        .iter()
+        .any(|e| matches!(e, Event::RaidStarted { map, .. } if map == "Interchange")));
 }
 
 #[test]

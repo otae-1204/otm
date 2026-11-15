@@ -80,7 +80,10 @@ pub fn parse_message(message: &str) -> LogLine {
     }
 
     if message.starts_with("scene preset path:") {
-        if let Some(map) = message.split_whitespace().find_map(|w| w.strip_prefix("rcid:")) {
+        if let Some(map) = message
+            .split_whitespace()
+            .find_map(|w| w.strip_prefix("rcid:"))
+        {
             let map = map.split('.').next().unwrap_or_default();
             if !map.is_empty() {
                 return LogLine::ScenePreset {
@@ -295,8 +298,9 @@ mod tests {
 
     #[test]
     fn crlf_and_garbage() {
-        let l = parse_line("2026-11-15 18:00:40.493|1.3.0.2.48779|Info|application|GameStarted:x\r\n")
-            .unwrap();
+        let l =
+            parse_line("2026-11-15 18:00:40.493|1.3.0.2.48779|Info|application|GameStarted:x\r\n")
+                .unwrap();
         assert_eq!(l.kind, LogLine::GameStarted);
         assert!(parse_line("not a log line").is_none());
         assert!(parse_line("").is_none());
