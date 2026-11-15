@@ -1,0 +1,36 @@
+{"type": "paths", "time": "2026-11-15T21:00:00.000+01:00", "game_dir": "C:/Battlestate Games/Escape from Tarkov", "screenshot_dir": "C:/Battlestate Games/Escape from Tarkov/Screenshots", "log_dir": "C:/Battlestate Games/Escape from Tarkov/Logs"}
+{"type": "session", "time": "2026-11-15T21:00:02.000+01:00", "mode": "PvpSeason"}
+{"type": "raid_loading", "time": "2026-11-15T21:00:06.000+01:00", "map": "bigmap"}
+{"type": "raid_started", "time": "2026-11-15T21:00:12.000+01:00", "map": "bigmap", "scav": false, "raid_mode": "Online"}
+# 1 宿舍院子 yaw=0.00
+{"type": "position", "time": "2026-11-15T21:00:20.000+01:00", "x": 200.0, "y": 1.6, "z": 150.0, "yaw": 0.0, "source": "screenshot"}
+# 2 宿舍 2F 楼梯口 yaw=206.57
+{"type": "position", "time": "2026-11-15T21:00:28.000+01:00", "x": 199.0, "y": 3.2, "z": 148.0, "yaw": 206.57, "source": "screenshot"}
+# 3 宿舍 2F 走廊 yaw=213.69
+{"type": "position", "time": "2026-11-15T21:00:36.000+01:00", "x": 197.0, "y": 3.3, "z": 145.0, "yaw": 213.69, "source": "screenshot"}
+# 4 宿舍 2F 走廊 yaw=216.87
+{"type": "position", "time": "2026-11-15T21:00:44.000+01:00", "x": 194.0, "y": 3.3, "z": 141.0, "yaw": 216.87, "source": "screenshot"}
+# 5 宿舍 1F 出门 yaw=209.74
+{"type": "position", "time": "2026-11-15T21:00:52.000+01:00", "x": 190.0, "y": 1.6, "z": 134.0, "yaw": 209.74, "source": "screenshot"}
+# 6 宿舍西侧 yaw=218.66
+{"type": "position", "time": "2026-11-15T21:01:00.000+01:00", "x": 182.0, "y": 1.5, "z": 124.0, "yaw": 218.66, "source": "screenshot"}
+# 7 往加油站 yaw=219.81
+{"type": "position", "time": "2026-11-15T21:01:08.000+01:00", "x": 172.0, "y": 1.4, "z": 112.0, "yaw": 219.81, "source": "screenshot"}
+# 8 往加油站 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:01:16.000+01:00", "x": 161.0, "y": 1.4, "z": 100.0, "yaw": 222.51, "source": "screenshot"}
+# 9 老加油站北 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:01:24.000+01:00", "x": 150.0, "y": 1.3, "z": 88.0, "yaw": 222.51, "source": "screenshot"}
+# 10 老加油站 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:01:32.000+01:00", "x": 139.0, "y": 1.3, "z": 76.0, "yaw": 222.51, "source": "screenshot"}
+# 11 铁路边 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:01:40.000+01:00", "x": 128.0, "y": 1.2, "z": 64.0, "yaw": 222.51, "source": "screenshot"}
+# 12 铁路边 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:01:48.000+01:00", "x": 117.0, "y": 1.2, "z": 52.0, "yaw": 222.51, "source": "screenshot"}
+# 13 往十字路口 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:01:56.000+01:00", "x": 106.0, "y": 1.1, "z": 40.0, "yaw": 222.51, "source": "screenshot"}
+# 14 往十字路口 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:02:04.000+01:00", "x": 95.0, "y": 1.1, "z": 28.0, "yaw": 222.51, "source": "screenshot"}
+# 15 十字路口北 yaw=222.51
+{"type": "position", "time": "2026-11-15T21:02:12.000+01:00", "x": 84.0, "y": 1.0, "z": 16.0, "yaw": 222.51, "source": "screenshot"}
+{"type": "position", "time": "2026-11-15T21:02:40.000+01:00", "x": 84.0, "y": 1.0, "z": 16.0, "yaw": null, "source": "log"}
+{"type": "raid_ended", "time": "2026-11-15T21:02:50.000+01:00"}
