@@ -3,3 +3,8 @@ design/prototypes/data/
 # 本机工具产生的目录
 .codegraph/
 .iridium/
+# 界面依赖和构建产物
+app/node_modules/
+app/dist/
+# Rust 构建产物
+target/

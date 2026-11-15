@@ -1,0 +1,19 @@
+[package]
+name = "otm-core"
+version = "0.1.0"
+edition = "2021"
+description = "otm 的核心：读游戏截图文件名和日志，产出事件"
+publish = false
+
+[lib]
+name = "otm_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "otm-replay"
+path = "src/bin/otm-replay.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+time = { version = "0.3", features = ["local-offset"] }

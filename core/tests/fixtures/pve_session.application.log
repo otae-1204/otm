@@ -1,0 +1,102 @@
+2026-11-12 20:08:24.567|1.3.0.1.48558|Info|application|Application awaken, updateQueue:'Update'
+2026-11-12 20:08:24.567|1.3.0.1.48558|Info|application|Assert.raiseExceptions:'True'
+2026-11-12 20:08:24.569|1.3.0.1.48558|Info|application|driveType:SSD swapDriveType:SSD
+2026-11-12 20:08:30.719|1.3.0.1.48558|Info|application|NVIDIA Reflex is available on this machine, Status: NvReflex_OK.
+2026-11-12 20:08:35.872|1.3.0.1.48558|Info|application|Game settings:
+2026-11-12 20:08:35.872|1.3.0.1.48558|Info|application|Sound settings:
+2026-11-12 20:08:35.872|1.3.0.1.48558|Info|application|PostFx settings:
+2026-11-12 20:08:35.872|1.3.0.1.48558|Info|application|Graphics settings:
+2026-11-12 20:08:35.876|1.3.0.1.48558|Info|application|Control settings:
+2026-11-12 20:08:41.144|1.3.0.1.48558|Info|application|Session mode: Pve
+2026-11-12 20:10:09.180|1.3.0.1.48558|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-12 20:10:09.181|1.3.0.1.48558|Info|application|CompleteSelectedProfile ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-12 20:10:27.122|1.3.0.1.48558|Debug|application|Start loading dll 'D:/Battlestate Games/EFT/EscapeFromTarkov_Data/../BattlEye/BEClient_x64.dll'
+2026-11-12 20:10:27.798|1.3.0.1.48558|Debug|application|SUCCESS: loading dll 'D:/Battlestate Games/EFT/EscapeFromTarkov_Data/../BattlEye/BEClient_x64.dll'
+2026-11-12 20:10:27.799|1.3.0.1.48558|Debug|application|Getting Proc Address for 'Init', dllPtr:'140720363012096'
+2026-11-12 20:10:27.799|1.3.0.1.48558|Debug|application|SUCCESS: getting proc address 'Init', dllPtr:'140720363012096'
+2026-11-12 20:10:27.799|1.3.0.1.48558|Debug|application|Getting Proc Address for 'GetVer', dllPtr:'140720363012096'
+2026-11-12 20:10:27.799|1.3.0.1.48558|Debug|application|SUCCESS: getting proc address 'GetVer', dllPtr:'140720363012096'
+2026-11-12 20:10:27.799|1.3.0.1.48558|Debug|application|Init: pstrGameVersion: Escape from Tarkov 1.3.0.1.48558, uiAddress: 0, usPort: 17000
+2026-11-12 20:10:27.802|1.3.0.1.48558|Info|application|Initialized (v1.249)
+2026-11-12 20:10:27.802|1.3.0.1.48558|Info|application|BEClient inited successfully
+2026-11-12 20:10:27.802|1.3.0.1.48558|Debug|application|totalMemoryBeforeCleanUp 715.875
+2026-11-12 20:10:27.802|1.3.0.1.48558|Debug|application|GC::Collect
+2026-11-12 20:10:28.085|1.3.0.1.48558|Debug|application|GC::Collect Aggressive
+2026-11-12 20:10:28.373|1.3.0.1.48558|Debug|application|collectedMemoryGB 48.22656
+2026-11-12 20:10:28.401|1.3.0.1.48558|Info|application|Config entry: GameID eft
+2026-11-12 20:10:28.401|1.3.0.1.48558|Info|application|Config entry: MasterPort 17000
+2026-11-12 20:10:28.521|1.3.0.1.48558|Info|application|Disposing BEClient
+2026-11-12 20:10:28.521|1.3.0.1.48558|Info|application|BEClient exit
+2026-11-12 20:10:28.622|1.3.0.1.48558|Info|application|BEClient exit successfully
+2026-11-12 20:10:28.622|1.3.0.1.48558|Debug|application|Releasing dll '140720363012096'
+2026-11-12 20:10:28.745|1.3.0.1.48558|Debug|application|SUCCESS: Dll released with code '1'
+2026-11-12 20:14:59.488|1.3.0.1.48558|Debug|application|Matching with group id: 
+2026-11-12 20:14:59.488|1.3.0.1.48558|Info|application|ClientMetricsEvents():351.1833
+2026-11-12 20:15:03.031|1.3.0.1.48558|Info|application|scene preset path:maps/shopping_mall.bundle rcid:Shopping_Mall.ScenesPreset.asset
+2026-11-12 20:15:03.031|1.3.0.1.48558|Debug|application|TRACE-NetworkGameMatching G
+2026-11-12 20:15:04.843|1.3.0.1.48558|Debug|application|TRACE-NetworkGameMatching H
+2026-11-12 20:15:04.845|1.3.0.1.48558|Debug|application|TRACE-NetworkGameMatching I
+2026-11-12 20:15:31.792|1.3.0.1.48558|Info|application|LocationLoaded:23.01 real:32.3 diff:9.28
+2026-11-12 20:16:22.331|1.3.0.1.48558|Info|application|MatchingCompleted:73.56 real:82.84 diff:9.27
+2026-11-12 20:16:22.446|1.3.0.1.48558|Info|application|GamePrepared:73.66 real:82.95 diff:9.28
+2026-11-12 20:16:22.446|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate 0
+2026-11-12 20:16:22.446|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate 2
+2026-11-12 20:16:23.863|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate 3
+2026-11-12 20:16:23.863|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate profileStatus: 'Profileid: aaaaaaaaaaaaaaaaaaaaf17e, Status: Busy, RaidMode: Online, Ip: 10.0.0.1, Port: 17000, Location: Interchange, Sid: sn-sin03lgs018_aaaaaaaaaaaaaaaaaaaaba8b_12.11.26_15-15-20, GameMode: deathmatch, shortId: MGZHNF'
+2026-11-12 20:16:23.866|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate 4
+2026-11-12 20:16:23.869|1.3.0.1.48558|Info|application|GameCreated:75.1(1.43) real:84.38(1.43) diff:9.27
+2026-11-12 20:16:23.869|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate 5
+2026-11-12 20:18:13.149|1.3.0.1.48558|Info|application|GamePooled:183.15(108.05) real:193.66(109.28) diff:10.51
+2026-11-12 20:18:25.305|1.3.0.1.48558|Info|application|GameRunned:185.74(2.59) real:205.81(12.14) diff:20.06
+2026-11-12 20:18:25.515|1.3.0.1.48558|Info|application|GameSpawn:185.9(0.15) real:206.02(0.21) diff:20.12
+2026-11-12 20:18:26.176|1.3.0.1.48558|Info|application|PlayerSpawnEvent:186.62(0.72) real:206.68(0.65) diff:20.05
+2026-11-12 20:18:34.297|1.3.0.1.48558|Info|application|GameSpawned:194.03(7.41) real:214.8(8.12) diff:20.77
+2026-11-12 20:18:34.297|1.3.0.1.48558|Debug|application|Heap pre-allocation - disabled
+2026-11-12 20:18:36.245|1.3.0.1.48558|Debug|application|GC::CollectAsync time 1.947327s 2440.168 - collected 359.5586
+2026-11-12 20:18:36.247|1.3.0.1.48558|Debug|application|GC mode switched to Disabled
+2026-11-12 20:18:37.371|1.3.0.1.48558|Info|application|GameStarting:197.09(3.05) real:217.88(3.08) diff:20.79
+2026-11-12 20:18:49.379|1.3.0.1.48558|Info|application|GameStarted:206.88(9.79) real:229.89(12) diff:23
+2026-11-12 20:18:49.393|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate 6
+2026-11-12 20:18:49.609|1.3.0.1.48558|Info|application|[Transit] `aaaaaaaaaaaaaaaaaaaaf17e` Count:0, EventPlayer:False
+2026-11-12 20:19:47.063|1.3.0.1.48558|Info|application|Reason:PacketsQueue, Position:(-205.637, 21.354, 127.143), SpeedLimit:0.8, CurrentState:Idle, StrengthSummaryLevel:18, WalkSpeedLimit:1
+2026-11-12 20:36:29.811|1.3.0.1.48558|Info|application|Reason:PacketsQueue, Position:(-28.478, 27.168, -168.274), SpeedLimit:0.8, CurrentState:Idle, StrengthSummaryLevel:18, WalkSpeedLimit:1
+2026-11-12 20:42:59.382|1.3.0.1.48558|Info|application|Reason:Lift, Position:(405.836, 33.281, 145.699), SpeedLimit:0.8, CurrentState:Idle, StrengthSummaryLevel:18, WalkSpeedLimit:1
+2026-11-12 20:45:29.149|1.3.0.1.48558|Info|application|Reason:PacketsQueue, Position:(470.755, 33.117, 68.776), SpeedLimit:7.3, CurrentState:Sprint, StrengthSummaryLevel:18, WalkSpeedLimit:0.8554553
+2026-11-12 20:45:38.049|1.3.0.1.48558|Info|application|Reason:Speed, Position:(470.918, 33.911, 73.590), SpeedLimit:7.3, CurrentState:Sprint, StrengthSummaryLevel:18, WalkSpeedLimit:0.8554553
+2026-11-12 20:45:38.200|1.3.0.1.48558|Info|application|Reason:Speed, Position:(470.918, 33.911, 73.590), SpeedLimit:3.636223, CurrentState:Run, StrengthSummaryLevel:18, WalkSpeedLimit:0.8554553
+2026-11-12 20:51:20.126|1.3.0.1.48558|Debug|application|totalMemoryBeforeCleanUp 3654.285
+2026-11-12 20:51:20.126|1.3.0.1.48558|Debug|application|GC mode switched to Enabled
+2026-11-12 20:51:20.126|1.3.0.1.48558|Debug|application|GC::Collect
+2026-11-12 20:51:20.710|1.3.0.1.48558|Debug|application|GC::Collect Aggressive
+2026-11-12 20:51:21.265|1.3.0.1.48558|Debug|application|collectedMemoryGB 2528.012
+2026-11-12 20:51:21.265|1.3.0.1.48558|Debug|application|GC mode switched to Disabled
+2026-11-12 20:51:21.265|1.3.0.1.48558|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-12 20:51:24.520|1.3.0.1.48558|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-12 20:51:24.523|1.3.0.1.48558|Info|application|CompleteSelectedProfile ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-12 21:16:02.569|1.3.0.1.48558|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-12 21:16:02.569|1.3.0.1.48558|Info|application|CompleteSelectedProfile ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-12 21:16:08.646|1.3.0.1.48558|Debug|application|Start loading dll 'D:/Battlestate Games/EFT/EscapeFromTarkov_Data/../BattlEye/BEClient_x64.dll'
+2026-11-12 21:16:09.373|1.3.0.1.48558|Debug|application|SUCCESS: loading dll 'D:/Battlestate Games/EFT/EscapeFromTarkov_Data/../BattlEye/BEClient_x64.dll'
+2026-11-12 21:16:09.373|1.3.0.1.48558|Debug|application|Getting Proc Address for 'Init', dllPtr:'140720328540160'
+2026-11-12 21:16:09.373|1.3.0.1.48558|Debug|application|SUCCESS: getting proc address 'Init', dllPtr:'140720328540160'
+2026-11-12 21:16:09.373|1.3.0.1.48558|Debug|application|Getting Proc Address for 'GetVer', dllPtr:'140720328540160'
+2026-11-12 21:16:09.373|1.3.0.1.48558|Debug|application|SUCCESS: getting proc address 'GetVer', dllPtr:'140720328540160'
+2026-11-12 21:16:09.373|1.3.0.1.48558|Debug|application|Init: pstrGameVersion: Escape from Tarkov 1.3.0.1.48558, uiAddress: 0, usPort: 17000
+2026-11-12 21:16:09.376|1.3.0.1.48558|Info|application|Initialized (v1.249)
+2026-11-12 21:16:09.376|1.3.0.1.48558|Info|application|BEClient inited successfully
+2026-11-12 21:16:09.438|1.3.0.1.48558|Info|application|Config entry: GameID eft
+2026-11-12 21:16:09.438|1.3.0.1.48558|Info|application|Config entry: MasterPort 17000
+2026-11-12 21:16:10.831|1.3.0.1.48558|Debug|application|GC mode switched to Enabled
+2026-11-12 21:16:10.906|1.3.0.1.48558|Info|application|Disposing BEClient
+2026-11-12 21:16:10.906|1.3.0.1.48558|Info|application|BEClient exit
+2026-11-12 21:16:11.007|1.3.0.1.48558|Info|application|BEClient exit successfully
+2026-11-12 21:16:11.007|1.3.0.1.48558|Debug|application|Releasing dll '140720328540160'
+2026-11-12 21:16:11.149|1.3.0.1.48558|Debug|application|SUCCESS: Dll released with code '1'
+2026-11-12 21:16:13.109|1.3.0.1.48558|Debug|application|GC::CollectAsync time 2.278564s 4561.98 - collected 2617.578
+2026-11-12 21:23:42.479|1.3.0.1.48558|Debug|application|Heap pre-allocation - disabled
+2026-11-12 21:23:42.479|1.3.0.1.48558|Debug|application|totalMemoryBeforeCleanUp 2137.32
+2026-11-12 21:23:42.479|1.3.0.1.48558|Debug|application|GC::Collect
+2026-11-12 21:23:43.276|1.3.0.1.48558|Debug|application|GC::Collect Aggressive
+2026-11-12 21:23:44.058|1.3.0.1.48558|Debug|application|collectedMemoryGB 28.64453
+2026-11-12 21:23:44.058|1.3.0.1.48558|Debug|application|GC mode switched to Disabled
+2026-11-12 21:24:48.406|1.3.0.1.48558|Debug|application|GC mode switched to Enabled
