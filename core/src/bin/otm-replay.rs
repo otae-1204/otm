@@ -49,12 +49,19 @@ fn run(log_path: PathBuf, shots_path: PathBuf) -> io::Result<()> {
         )
     })?;
 
-    let (events, _state) = replay(&log_text, &shots_text);
+    let (events, state) = replay(&log_text, &shots_text);
     let stdout = io::stdout();
     let mut out = BufWriter::new(stdout.lock());
     for event in events {
         let json = serde_json::to_string(&event)?;
         writeln!(out, "{json}")?;
     }
-    out.flush()
+    out.flush()?;
+
+    // 加载时的场景预设名和进局记录里的地点名对不上：标准输出只放事件，
+    // 这几行给补 `src/maps.rs` 用。
+    for (preset, location) in state.map_mismatches() {
+        eprintln!("未收录的场景预设: {preset} → {location}");
+    }
+    Ok(())
 }

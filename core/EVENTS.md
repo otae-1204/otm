@@ -17,6 +17,7 @@
 | `position` | `x`, `y`, `z`, `yaw`（度，可为 `null`）, `source`: `"screenshot"` \| `"log"` | 一次定位 |
 
 - `map` 是游戏内部的地图名，原样给出，例如 `bigmap`、`Interchange`、`factory4_day`、`Sandbox_high`、`RezervBase`。换成显示用的名字由界面负责。
+- `map` 一律用进局记录里 `Location` 的写法，`raid_loading` 也一样：加载时日志给的是场景预设名，核心已经换成地点名，界面不用自己猜。
 - `x y z` 是游戏坐标，`y` 是高度。
 - `yaw`：绕竖直轴的朝向，单位度，范围 [0, 360)。来自截图文件名里的四元数。日志来源的定位没有朝向，为 `null`。
 - `scav`：进局记录里的角色编号是 PMC 编号加一时为 `true`。

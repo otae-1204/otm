@@ -4,6 +4,7 @@
 //!
 //! - [`screenshot`]：解析截图文件名，取出时间、坐标、朝向。
 //! - [`log`]：解析 `application` 日志的一行。
+//! - [`maps`]：场景预设名换成地点名。
 //! - [`state`]：状态机，吃日志行和截图，维护状态快照，吐出事件。
 //! - [`paths`]：找截图目录、游戏目录、最新的日志目录。
 //! - [`tail`]：跟读日志文件。
@@ -27,6 +28,7 @@
 
 pub mod event;
 pub mod log;
+pub mod maps;
 pub mod paths;
 pub mod screenshot;
 pub mod state;

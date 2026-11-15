@@ -6,7 +6,7 @@
 //! 几条规则：
 //!
 //! - 进局记录里的角色编号等于 PMC 编号加一，这一局就是 Scav。两个编号不知道哪个时
-//!   一律按 PMC 算（见 [`State::is_scav`]）。
+//!   一律按 PMC 算（见 `is_scav`）。
 //! - `GameStarted` 之后出现的 `Disposing BEClient` 表示离开对局，清空本局轨迹。
 //!   对局开始前出现的 `Disposing BEClient`（游戏启动时 BattleEye 的初始化）不算。
 //! - 日志里的 `Position:` 只在 `GameStarted` 之后、离开对局之前算数。加载地图之前的那几条
@@ -14,6 +14,9 @@
 //!   紧接着会再报一次。
 //! - 截图是直接观测，什么时候拍的都算一次定位；轨迹在每次开始加载地图和离开对局时清空，
 //!   所以快照里的轨迹就是这一局的。
+//! - 地图名一律用进局记录里 `Location` 的写法。加载时日志给的是场景预设名，先按
+//!   [`crate::maps`] 的对照表换过去；换不出来的原样给出，等进局记录来了以它为准，
+//!   并把对不上的那一对记进 [`State::map_mismatches`]，方便以后补表。
 //! - 同一时刻、同一坐标的重复记录只算一次（日志里偶尔有完全一样的连续两行）。
 //! - 轨迹按到达顺序追加。调用方按时间喂进来，所以就是时间顺序；截图的时间只到分钟，
 //!   同一分钟里的一张截图可能比前一条日志定位的时间早不到一分钟。
@@ -23,6 +26,7 @@ use crate::event::{
     SnapshotRaid, TrailPoint,
 };
 use crate::log::LogLine;
+use crate::maps::location_from_preset;
 use crate::screenshot::Screenshot;
 use crate::time::Timestamp;
 
@@ -32,7 +36,10 @@ pub const MAX_TRAIL: usize = 5000;
 /// 一局的状态。
 #[derive(Debug, Clone, PartialEq)]
 struct RaidState {
+    /// 地点名，进局记录里 `Location` 的写法。
     map: String,
+    /// 加载时日志给的场景预设名，用来和 `Location` 对照。
+    preset: Option<String>,
     started: bool,
     scav: bool,
     started_at: Option<Timestamp>,
@@ -51,6 +58,9 @@ pub struct State {
     pmc_profile_id: Option<String>,
     position: Option<SnapshotPosition>,
     trail: Vec<TrailPoint>,
+    /// 加载时给出的地图名和进局记录里的 `Location` 对不上的那些对，`(预设名, 地点名)`。
+    /// 只用来补 [`crate::maps`] 的对照表，不影响事件。
+    map_mismatches: Vec<(String, String)>,
 }
 
 impl State {
@@ -70,6 +80,14 @@ impl State {
             screenshot_dir,
             log_dir,
         };
+    }
+
+    /// 加载时给出的地图名和进局记录里的 `Location` 对不上的那些对，`(预设名, 地点名)`。
+    ///
+    /// 正常情况下是空的：要么对照表里有这一条，要么两边本来就同名。有记录说明对照表
+    /// 缺一条，把 `(预设名, 地点名)` 补进 [`crate::maps`] 就能消掉。同样的对只记一次。
+    pub fn map_mismatches(&self) -> &[(String, String)] {
+        &self.map_mismatches
     }
 
     /// 当前状态快照。
@@ -123,6 +141,8 @@ impl State {
             },
 
             LogLine::ScenePreset { map } => {
+                // 日志给的是场景预设名，换成地点名再报出去。
+                let location = location_from_preset(map).to_string();
                 // 加载地图：上一局如果没收到"离开对局"，到这里也就结束了。
                 let mut events = Vec::new();
                 if self.in_raid() {
@@ -133,7 +153,7 @@ impl State {
                 if self
                     .raid
                     .as_ref()
-                    .is_some_and(|r| r.map == *map && !r.started)
+                    .is_some_and(|r| r.map == location && !r.started)
                 {
                     return events;
                 }
@@ -141,7 +161,8 @@ impl State {
                 self.clear_positions();
                 self.pending_profile_id = None;
                 self.raid = Some(RaidState {
-                    map: map.clone(),
+                    map: location.clone(),
+                    preset: Some(map.clone()),
                     started: false,
                     scav: false,
                     started_at: None,
@@ -149,7 +170,7 @@ impl State {
                 });
                 events.push(Event::RaidLoading {
                     time,
-                    map: map.clone(),
+                    map: location,
                 });
                 events
             }
@@ -164,8 +185,20 @@ impl State {
                 if let Some(id) = profile_id {
                     self.pending_profile_id = Some(id.clone());
                 }
+
+                // 进局记录里的 `Location` 才是地点名。加载时给出的名字和它不一样
+                // （对照表里没有这个预设），就把这一对记下来，方便以后补表。
+                let mismatch = self.raid.as_ref().and_then(|raid| {
+                    let preset = raid.preset.as_deref()?;
+                    (!raid.map.eq_ignore_ascii_case(map)).then(|| (preset.to_string(), map.clone()))
+                });
+                if let Some((preset, location)) = mismatch {
+                    self.note_map_mismatch(preset, location);
+                }
+
                 match self.raid.as_mut() {
                     Some(raid) => {
+                        // 以进局记录为准。
                         raid.map = map.clone();
                         raid.raid_mode = raid_mode.or(raid.raid_mode);
                     }
@@ -174,6 +207,7 @@ impl State {
                         self.clear_positions();
                         self.raid = Some(RaidState {
                             map: map.clone(),
+                            preset: None,
                             started: false,
                             scav: false,
                             started_at: None,
@@ -262,6 +296,17 @@ impl State {
             return false;
         };
         pending != pmc && is_one_more(pending, pmc)
+    }
+
+    /// 记一对"预设名和地点名对不上"。同样的对只记一次。
+    fn note_map_mismatch(&mut self, preset: String, location: String) {
+        let known = self
+            .map_mismatches
+            .iter()
+            .any(|(p, l)| *p == preset && *l == location);
+        if !known {
+            self.map_mismatches.push((preset, location));
+        }
     }
 
     fn end_raid(&mut self) {
@@ -436,9 +481,13 @@ mod tests {
     }
 
     fn game_create(profile: &str, raid_mode: &str) -> String {
+        game_create_at(profile, raid_mode, "bigmap")
+    }
+
+    fn game_create_at(profile: &str, raid_mode: &str, location: &str) -> String {
         format!(
             "TRACE-NetworkGameCreate profileStatus: 'Profileid: {profile}, Status: Busy, \
-             RaidMode: {raid_mode}, Ip: 1.2.3.4, Port: 17000, Location: bigmap, Sid: x, \
+             RaidMode: {raid_mode}, Ip: 1.2.3.4, Port: 17000, Location: {location}, Sid: x, \
              GameMode: deathmatch, shortId: y'"
         )
     }
@@ -568,6 +617,108 @@ mod tests {
         let snap = state.snapshot();
         assert!(snap.trail.is_empty());
         assert_eq!(snap.position, None);
+    }
+
+    #[test]
+    fn loading_reports_the_location_name() {
+        // 立交桥：加载时日志给的是场景预设名 Shopping_Mall，报出去的是地点名 Interchange。
+        let mut state = State::new();
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-12 20:15:03.031", &scene("Shopping_Mall")),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidLoading {
+                time: ts("2026-11-12T20:15:03.031"),
+                map: "Interchange".into()
+            }]
+        );
+
+        feed_log(
+            &mut state,
+            &line("2026-11-12 20:16:23.863", &game_create_at(PMC, "Online", "Interchange")),
+        );
+        let events = feed_log(&mut state, &line("2026-11-12 20:18:49.379", "GameStarted:1(1)"));
+        assert_eq!(
+            events,
+            vec![Event::RaidStarted {
+                time: ts("2026-11-12T20:18:49.379"),
+                map: "Interchange".into(),
+                scav: false,
+                raid_mode: RaidMode::Online,
+            }]
+        );
+        // 两边名字一致，不需要补表。
+        assert_eq!(state.map_mismatches(), &[]);
+    }
+
+    #[test]
+    fn unknown_preset_is_reported_as_is_and_the_raid_record_wins() {
+        // 对照表里没有的预设：先原样报出去，进局记录来了以它为准，并把这一对记下来。
+        let mut state = State::new();
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-15 17:53:17.104", &scene("Some_New_Preset")),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidLoading {
+                time: ts("2026-11-15T17:53:17.104"),
+                map: "Some_New_Preset".into()
+            }]
+        );
+        assert_eq!(state.map_mismatches(), &[]);
+
+        feed_log(
+            &mut state,
+            &line("2026-11-15 17:58:38.249", &game_create_at(PMC, "Online", "factory4_day")),
+        );
+        assert_eq!(
+            state.map_mismatches(),
+            &[("Some_New_Preset".to_string(), "factory4_day".to_string())]
+        );
+
+        let events = feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1)"));
+        match events.last() {
+            Some(Event::RaidStarted { map, .. }) => assert_eq!(map, "factory4_day"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_same_unmapped_preset_is_recorded_once() {
+        let mut state = State::new();
+        for _ in 0..2 {
+            feed_log(&mut state, &line("2026-11-15 17:53:17.104", &scene("Some_New_Preset")));
+            feed_log(
+                &mut state,
+                &line("2026-11-15 17:58:38.249", &game_create_at(PMC, "Online", "factory4_day")),
+            );
+            feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1)"));
+            feed_log(&mut state, &line("2026-11-15 18:30:00.000", "Disposing BEClient"));
+        }
+        assert_eq!(state.map_mismatches().len(), 1, "{:?}", state.map_mismatches());
+    }
+
+    #[test]
+    fn a_mapped_preset_that_disagrees_with_the_raid_record_is_recorded() {
+        // 表里说 Shopping_Mall 是 Interchange，日志却说是别的：以日志为准，并记下来。
+        let mut state = State::new();
+        feed_log(&mut state, &line("2026-11-12 20:15:03.031", &scene("Shopping_Mall")));
+        feed_log(
+            &mut state,
+            &line("2026-11-12 20:16:23.863", &game_create_at(PMC, "Online", "Shopping_Mall")),
+        );
+        assert_eq!(
+            state.map_mismatches(),
+            &[("Shopping_Mall".to_string(), "Shopping_Mall".to_string())]
+        );
+        let events = feed_log(&mut state, &line("2026-11-12 20:18:49.379", "GameStarted:1(1)"));
+        match events.last() {
+            Some(Event::RaidStarted { map, .. }) => assert_eq!(map, "Shopping_Mall"),
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

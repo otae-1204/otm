@@ -13,6 +13,7 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -88,6 +89,7 @@ pub struct Watcher {
     events: Receiver<Event>,
     stop: Sender<()>,
     thread: Option<JoinHandle<()>>,
+    map_mismatches: Arc<Mutex<Vec<(String, String)>>>,
 }
 
 impl Watcher {
@@ -95,10 +97,12 @@ impl Watcher {
     pub fn start(options: WatchOptions) -> Self {
         let (event_tx, event_rx) = mpsc::channel();
         let (stop_tx, stop_rx) = mpsc::channel();
+        let map_mismatches = Arc::new(Mutex::new(Vec::new()));
+        let shared = Arc::clone(&map_mismatches);
         let thread = thread::Builder::new()
             .name("otm-watch".into())
             .spawn(move || {
-                let mut loop_ = WatchLoop::new(options, event_tx);
+                let mut loop_ = WatchLoop::new(options, event_tx, shared);
                 loop_.run(&stop_rx);
             })
             .expect("起不了监听线程");
@@ -106,6 +110,7 @@ impl Watcher {
             events: event_rx,
             stop: stop_tx,
             thread: Some(thread),
+            map_mismatches,
         }
     }
 
@@ -122,6 +127,17 @@ impl Watcher {
     /// 取下一个事件，最多等 `timeout`。超时返回 `None`，监听器停了也返回 `None`。
     pub fn recv_timeout(&self, timeout: Duration) -> Option<Event> {
         self.events.recv_timeout(timeout).ok()
+    }
+
+    /// 加载时给出的地图名和进局记录里的 `Location` 对不上的那些对，`(预设名, 地点名)`。
+    ///
+    /// 正常情况下是空的。有记录说明 [`crate::maps`] 的对照表缺一条，把这对补进去就行。
+    /// 接界面时建议把它写进日志，方便以后补表。
+    pub fn map_mismatches(&self) -> Vec<(String, String)> {
+        self.map_mismatches
+            .lock()
+            .map(|m| m.clone())
+            .unwrap_or_default()
     }
 
     /// 停下监听线程并等它结束。
@@ -153,10 +169,18 @@ struct WatchLoop {
     seen_shots: HashSet<OsString>,
     /// 已经报过的目录。
     reported: Option<Dirs>,
+    /// 转给 [`Watcher::map_mismatches`] 的对，和状态机共用一份。
+    map_mismatches: Arc<Mutex<Vec<(String, String)>>>,
+    /// 已经转过去多少条。
+    published_mismatches: usize,
 }
 
 impl WatchLoop {
-    fn new(options: WatchOptions, events: Sender<Event>) -> Self {
+    fn new(
+        options: WatchOptions,
+        events: Sender<Event>,
+        map_mismatches: Arc<Mutex<Vec<(String, String)>>>,
+    ) -> Self {
         Self {
             options,
             events,
@@ -164,6 +188,8 @@ impl WatchLoop {
             tail: LogTail::new(),
             seen_shots: HashSet::new(),
             reported: None,
+            map_mismatches,
+            published_mismatches: 0,
         }
     }
 
@@ -328,7 +354,24 @@ impl WatchLoop {
         for record in self.tail.poll() {
             let events = self.state.on_log(record.time, &record.kind);
             self.emit(events);
+            self.publish_map_mismatches();
         }
+    }
+
+    /// 状态机新记下的"预设名和地点名对不上"的对，转给 [`Watcher::map_mismatches`]。
+    fn publish_map_mismatches(&mut self) {
+        let all = self.state.map_mismatches();
+        if all.len() <= self.published_mismatches {
+            return;
+        }
+        if let Ok(mut out) = self.map_mismatches.lock() {
+            for pair in &all[self.published_mismatches..] {
+                if !out.contains(pair) {
+                    out.push(pair.clone());
+                }
+            }
+        }
+        self.published_mismatches = all.len();
     }
 }
 
@@ -547,6 +590,57 @@ mod tests {
             events.iter().any(|e| matches!(e, Event::Session { mode: Mode::Pve, .. })),
             "{events:?}"
         );
+
+        w.stop();
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn reports_preset_names_it_could_not_translate() {
+        // 对照表里没有的预设：加载时报原样，进局记录里是地点名，这一对要能拿出来。
+        let root = tmp_root("mismatch");
+        let shots = root.join("Escape from Tarkov").join("Screenshots");
+        fs::create_dir_all(&shots).unwrap();
+        let log_dir = root.join("Logs").join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        fs::create_dir_all(&log_dir).unwrap();
+        let mut text = String::new();
+        text += &line(
+            "2026-11-15 17:53:17.104",
+            "scene preset path:maps/streets_preset.bundle rcid:Some_New_Preset.scenespreset.asset",
+        );
+        text += &line(
+            "2026-11-15 17:58:38.249",
+            "TRACE-NetworkGameCreate profileStatus: 'Profileid: aaaaaaaaaaaaaaaaaaaa5f81, Status: Busy, RaidMode: Online, Ip: 1.2.3.4, Port: 17000, Location: TarkovStreets, Sid: x, GameMode: deathmatch, shortId: y'",
+        );
+        fs::write(log_dir.join("application.log"), text).unwrap();
+
+        let w = Watcher::start(
+            WatchOptions::default()
+                .game_dir(&root)
+                .screenshot_dir(&shots)
+                .poll_interval(Duration::from_millis(50)),
+        );
+        let events = collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::RaidLoading { .. })),
+            Duration::from_secs(5),
+        );
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, Event::RaidLoading { map, .. } if map == "Some_New_Preset")),
+            "{events:?}"
+        );
+
+        // 进局记录读进来之后，这一对应该出现在 map_mismatches 里。
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if w.map_mismatches() == vec![("Some_New_Preset".to_string(), "TarkovStreets".to_string())] {
+                break;
+            }
+            assert!(Instant::now() < deadline, "没等到对照表缺口：{:?}", w.map_mismatches());
+            thread::sleep(Duration::from_millis(20));
+        }
 
         w.stop();
         fs::remove_dir_all(&root).unwrap();

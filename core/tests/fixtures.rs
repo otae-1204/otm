@@ -226,10 +226,11 @@ fn pve_session_milestones() {
                 time: ts("2026-11-12T20:08:41.144"),
                 mode: Mode::Pve
             },
-            // 加载时日志里是 Shopping_Mall，进局记录里是 Interchange，以进局记录为准。
+            // 加载时日志里是场景预设名 Shopping_Mall，报出去时换成地点名 Interchange，
+            // 和下面 raid_started 的名字一致。
             Event::RaidLoading {
                 time: ts("2026-11-12T20:15:03.031"),
-                map: "Shopping_Mall".into()
+                map: "Interchange".into()
             },
             Event::RaidStarted {
                 time: ts("2026-11-12T20:18:49.379"),
@@ -272,6 +273,49 @@ fn pve_session_log_positions() {
             (470.918, 33.911, 73.59),
         ]
     );
+}
+
+#[test]
+fn map_names_agree_between_loading_and_started() {
+    // 加载和开始给的地图名必须是同一套：界面拿到 raid_loading 就去找地图，
+    // 名字不一样它就得自己猜。
+    for (log, shots) in [
+        ("season_session.application.log", "screenshot_names.txt"),
+        ("pve_session.application.log", "screenshot_names.txt"),
+    ] {
+        let (events, _) = replay(log, shots);
+        let mut loading: Option<&str> = None;
+        let mut pairs = 0;
+        for e in &events {
+            match e {
+                Event::RaidLoading { map, .. } => loading = Some(map),
+                Event::RaidStarted { map, .. } => {
+                    assert_eq!(
+                        loading,
+                        Some(map.as_str()),
+                        "{log}: raid_loading 和 raid_started 的地图名不一样"
+                    );
+                    pairs += 1;
+                    loading = None;
+                }
+                Event::RaidEnded { .. } => loading = None,
+                _ => {}
+            }
+        }
+        assert!(pairs > 0, "{log} 里没有一局？");
+    }
+}
+
+#[test]
+fn fixtures_need_no_extra_preset_mappings() {
+    // 这两份日志里的场景预设都在对照表里，不该留下待补的对。
+    for log in [
+        "season_session.application.log",
+        "pve_session.application.log",
+    ] {
+        let (_, state) = replay(log, "screenshot_names.txt");
+        assert_eq!(state.map_mismatches(), &[], "{log}");
+    }
 }
 
 #[test]

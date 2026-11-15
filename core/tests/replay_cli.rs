@@ -80,6 +80,43 @@ fn replay_pve_session() {
 }
 
 #[test]
+fn replay_reports_presets_it_could_not_translate() {
+    // 标准输出只有事件；对不上的预设名打到标准错误，方便补 src/maps.rs。
+    let dir = std::env::temp_dir().join(format!("otm-cli-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let log = dir.join("application.log");
+    let shots = dir.join("shots.txt");
+    std::fs::write(
+        &log,
+        concat!(
+            "2026-11-15 17:53:17.104|1.3.0.2.48779|Info|application|scene preset path:maps/streets_preset.bundle rcid:Some_New_Preset.scenespreset.asset\n",
+            "2026-11-15 17:58:38.249|1.3.0.2.48779|Debug|application|TRACE-NetworkGameCreate profileStatus: 'Profileid: aaaaaaaaaaaaaaaaaaaa5f81, Status: Busy, RaidMode: Online, Ip: 1.2.3.4, Port: 17000, Location: TarkovStreets, Sid: x, GameMode: deathmatch, shortId: y'\n",
+        ),
+    )
+    .unwrap();
+    std::fs::write(&shots, "").unwrap();
+
+    let output = Command::new(env!("CARGO_BIN_EXE_otm-replay"))
+        .arg(&log)
+        .arg(&shots)
+        .output()
+        .expect("跑不了 otm-replay");
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("未收录的场景预设: Some_New_Preset → TarkovStreets"),
+        "{stderr}"
+    );
+    // 标准输出仍然只有事件。
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.lines().all(|l| l.starts_with("{\"type\":")));
+    assert!(stdout.contains(r#""map":"Some_New_Preset""#), "{stdout}");
+
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn replay_rejects_missing_arguments() {
     let output = Command::new(env!("CARGO_BIN_EXE_otm-replay"))
         .output()
