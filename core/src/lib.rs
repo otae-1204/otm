@@ -14,10 +14,9 @@
 //!
 //! ```no_run
 //! use otm_core::watcher::{Watcher, WatchOptions};
-//! use std::time::Duration;
 //!
 //! let watcher = Watcher::start(WatchOptions::default());
-//! while let Some(event) = watcher.recv_timeout(Duration::from_secs(1)) {
+//! while let Some(event) = watcher.recv() {
 //!     println!("{}", serde_json::to_string(&event).unwrap());
 //! }
 //! ```

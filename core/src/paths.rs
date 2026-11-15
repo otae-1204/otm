@@ -60,11 +60,11 @@ pub fn home_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// 从截图目录反推游戏目录：`<文档>/Escape from Tarkov/Screenshots` 往上两级是
+/// 从截图目录反推游戏目录：`<文档>/Escape from Tarkov/Screenshots` 往上一级是
 /// `<文档>/Escape from Tarkov`，里面如果有 `Logs` 目录，那就是游戏目录。
 pub fn game_dir_from_screenshot_dir(screenshot_dir: &Path) -> Option<PathBuf> {
     let dir = clean_path(screenshot_dir);
-    let game_dir = dir.parent()?.parent()?;
+    let game_dir = dir.parent()?;
     if game_dir.join("Logs").is_dir() {
         Some(game_dir.to_path_buf())
     } else {
@@ -120,28 +120,33 @@ impl LogDirName {
 }
 
 /// 在 `Logs` 下找最新的日志目录（按目录名里的时间排，不看修改时间）。
+///
+/// 时间相同的两个目录（同一秒启动两次）取名字大的那个，保证每次挑到同一个。
 pub fn latest_log_dir(logs_dir: &Path) -> Option<PathBuf> {
-    let mut best: Option<(Timestamp, PathBuf)> = None;
+    let mut best: Option<(Timestamp, String, PathBuf)> = None;
     for entry in fs::read_dir(logs_dir).ok()?.flatten() {
         if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
             continue;
         }
-        let name = entry.file_name();
-        let Some(parsed) = LogDirName::parse(&name.to_string_lossy()) else {
+        let name = entry.file_name().to_string_lossy().to_string();
+        let Some(parsed) = LogDirName::parse(&name) else {
             continue;
         };
         let better = match &best {
             None => true,
-            Some((t, _)) => parsed.time > *t,
+            Some((time, old_name, _)) => (parsed.time, &name) > (*time, old_name),
         };
         if better {
-            best = Some((parsed.time, entry.path()));
+            best = Some((parsed.time, name, entry.path()));
         }
     }
-    best.map(|(_, p)| p)
+    best.map(|(_, _, p)| p)
 }
 
-/// 一个日志目录里的 `application` 日志文件。目录里没有时，退而找名字以 `application` 开头的文件。
+/// 一个日志目录里的 `application` 日志文件。
+///
+/// 优先 `application.log`；没有时退而找名字以 `application` 开头的文件，取名字最大的那个
+/// （日志轮换后带日期的那种，`read_dir` 的顺序不保证）。
 pub fn application_log_file(log_dir: &Path) -> Option<PathBuf> {
     let exact = log_dir.join("application.log");
     if exact.is_file() {
@@ -153,9 +158,8 @@ pub fn application_log_file(log_dir: &Path) -> Option<PathBuf> {
             continue;
         }
         let name = entry.file_name();
-        if name.to_string_lossy().starts_with("application") {
+        if name.to_string_lossy().starts_with("application") && found.as_ref().is_none_or(|f| name > *f) {
             found = Some(name);
-            break;
         }
     }
     found.map(|n| log_dir.join(n))
@@ -225,18 +229,31 @@ mod tests {
         assert!(application_log_file(&root).is_none());
         fs::write(root.join("application.log"), "x").unwrap();
         assert_eq!(application_log_file(&root).unwrap(), root.join("application.log"));
+        // 没有 application.log 时取名字最大的那个轮换文件。
+        fs::remove_file(root.join("application.log")).unwrap();
+        fs::write(root.join("application_2026.11.14.log"), "x").unwrap();
+        fs::write(root.join("application_2026.11.15.log"), "x").unwrap();
+        assert_eq!(
+            application_log_file(&root).unwrap(),
+            root.join("application_2026.11.15.log")
+        );
         fs::remove_dir_all(&root).unwrap();
     }
 
     #[test]
     fn game_dir_from_screenshot_dir_works() {
-        let root = std::env::temp_dir().join(format!("otm-game-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&root);
-        let shots = root.join("Escape from Tarkov").join("Screenshots");
+        // 实机上的布局：`文档/Escape from Tarkov/{Logs,Screenshots}`。
+        let docs = std::env::temp_dir().join(format!("otm-game-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&docs);
+        let game = docs.join("Escape from Tarkov");
+        let shots = game.join("Screenshots");
         fs::create_dir_all(&shots).unwrap();
         assert!(game_dir_from_screenshot_dir(&shots).is_none());
-        fs::create_dir_all(root.join("Logs")).unwrap();
-        assert_eq!(game_dir_from_screenshot_dir(&shots).unwrap(), root);
-        fs::remove_dir_all(&root).unwrap();
+        fs::create_dir_all(game.join("Logs")).unwrap();
+        assert_eq!(game_dir_from_screenshot_dir(&shots).unwrap(), game);
+        // 上一级（文档目录）里的 Logs 不算。
+        fs::create_dir_all(docs.join("Logs")).unwrap();
+        assert_eq!(game_dir_from_screenshot_dir(&shots).unwrap(), game);
+        fs::remove_dir_all(&docs).unwrap();
     }
 }

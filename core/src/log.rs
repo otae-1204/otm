@@ -23,9 +23,11 @@ pub enum LogLine {
     /// 开始加载地图，`map` 是 `rcid` 里第一个点号前面的部分。
     ScenePreset { map: String },
     /// `TRACE-NetworkGameCreate profileStatus: '... Location: Interchange ... RaidMode: Online ...'`
+    ///
+    /// `raid_mode` 在某些版本里没有，缺了也认这一行，地图名比 RaidMode 重要。
     GameCreate {
         map: String,
-        raid_mode: String,
+        raid_mode: Option<String>,
         profile_id: Option<String>,
     },
     /// `GameStarted:...`
@@ -57,9 +59,8 @@ pub fn parse_line(line: &str) -> Option<ParsedLine> {
     let _category = fields.next()?;
     let message = fields.next()?;
 
-    let time = parse_log_time(time)?;
     Some(ParsedLine {
-        time,
+        time: time.trim().parse().ok()?,
         kind: parse_message(message),
     })
 }
@@ -91,14 +92,11 @@ pub fn parse_message(message: &str) -> LogLine {
     }
 
     if message.starts_with("TRACE-NetworkGameCreate") && message.contains("profileStatus:") {
-        let map = field_value(message, "Location: ");
-        let raid_mode = field_value(message, "RaidMode: ");
-        let profile_id = field_value(message, "Profileid: ");
-        if let (Some(map), Some(raid_mode)) = (map, raid_mode) {
+        if let Some(map) = field_value(message, "Location: ") {
             return LogLine::GameCreate {
                 map,
-                raid_mode,
-                profile_id,
+                raid_mode: field_value(message, "RaidMode: "),
+                profile_id: field_value(message, "Profileid: "),
             };
         }
         return LogLine::Other;
@@ -109,21 +107,10 @@ pub fn parse_message(message: &str) -> LogLine {
     }
 
     if message.starts_with("Reason:") {
-        if let Some(pos) = message.find("Position:(") {
-            let rest = &message[pos + "Position:(".len()..];
-            if let Some(end) = rest.find(')') {
-                let mut it = rest[..end].split(',');
-                let x = it.next().and_then(|v| v.trim().parse::<f64>().ok());
-                let y = it.next().and_then(|v| v.trim().parse::<f64>().ok());
-                let z = it.next().and_then(|v| v.trim().parse::<f64>().ok());
-                if let (Some(x), Some(y), Some(z)) = (x, y, z) {
-                    if x.is_finite() && y.is_finite() && z.is_finite() {
-                        return LogLine::Position { x, y, z };
-                    }
-                }
-            }
-        }
-        return LogLine::Other;
+        return match parse_position(message) {
+            Some((x, y, z)) => LogLine::Position { x, y, z },
+            None => LogLine::Other,
+        };
     }
 
     if message.starts_with("Disposing BEClient") {
@@ -138,6 +125,28 @@ pub fn parse_message(message: &str) -> LogLine {
     }
 
     LogLine::Other
+}
+
+/// 从 `Reason:..., Position:(166.309, -0.593, 153.791), ...` 里取坐标。
+///
+/// 冒号后面偶尔有空格，括号里的三个数缺一个或者不是有限数就当没有。
+fn parse_position(message: &str) -> Option<(f64, f64, f64)> {
+    let rest = message.split_once("Position:")?.1.trim_start();
+    let inside = rest.strip_prefix('(')?;
+    let inside = &inside[..inside.find(')')?];
+    let mut nums = [0.0f64; 4];
+    let mut count = 0;
+    for piece in inside.split(',') {
+        if count == nums.len() {
+            return None;
+        }
+        nums[count] = piece.trim().parse::<f64>().ok().filter(|v| v.is_finite())?;
+        count += 1;
+    }
+    if count != 3 {
+        return None;
+    }
+    Some((nums[0], nums[1], nums[2]))
 }
 
 /// 在 `..., Key: value, ...` 这种正文里取某个键后面的值。
@@ -156,44 +165,6 @@ fn field_value(message: &str, key: &str) -> Option<String> {
     } else {
         Some(value.to_string())
     }
-}
-
-/// 解析 `2026-11-15 18:00:40.493`。
-fn parse_log_time(s: &str) -> Option<Timestamp> {
-    let s = s.trim();
-    let (date, clock) = s.split_once(' ')?;
-
-    let mut d = date.split('-');
-    let year: i32 = d.next()?.parse().ok()?;
-    let month: u8 = d.next()?.parse().ok()?;
-    let day: u8 = d.next()?.parse().ok()?;
-    if d.next().is_some() {
-        return None;
-    }
-
-    let (hms, frac) = match clock.split_once('.') {
-        Some((a, b)) => (a, Some(b)),
-        None => (clock, None),
-    };
-    let mut c = hms.split(':');
-    let hour: u8 = c.next()?.parse().ok()?;
-    let minute: u8 = c.next()?.parse().ok()?;
-    let second: u8 = c.next()?.parse().ok()?;
-    if c.next().is_some() {
-        return None;
-    }
-    let milli: u16 = match frac {
-        None => 0,
-        Some(f) => {
-            if f.is_empty() || f.len() > 9 || !f.bytes().all(|b| b.is_ascii_digit()) {
-                return None;
-            }
-            let head: String = f.chars().chain(std::iter::repeat('0')).take(3).collect();
-            head.parse().ok()?
-        }
-    };
-
-    Timestamp::from_ymd_hms_milli(year, month, day, hour, minute, second, milli)
 }
 
 #[cfg(test)]
@@ -240,7 +211,7 @@ mod tests {
             kind("2026-11-12 20:16:23.863|1.3.0.1.48558|Debug|application|TRACE-NetworkGameCreate profileStatus: 'Profileid: aaaaaaaaaaaaaaaaaaaaf17e, Status: Busy, RaidMode: Online, Ip: 10.0.0.1, Port: 17000, Location: Interchange, Sid: sn-sin03lgs018_aaaaaaaaaaaaaaaaaaaaba8b_12.11.26_15-15-20, GameMode: deathmatch, shortId: MGZHNF'"),
             LogLine::GameCreate {
                 map: "Interchange".into(),
-                raid_mode: "Online".into(),
+                raid_mode: Some("Online".into()),
                 profile_id: Some("aaaaaaaaaaaaaaaaaaaaf17e".into()),
             }
         );

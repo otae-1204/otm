@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use otm_core::event::{Event, Mode, PositionSource, RaidMode};
-use otm_core::log::{parse_line, LogLine};
-use otm_core::screenshot::{parse_screenshot_name, Screenshot};
+use otm_core::log::parse_line;
+use otm_core::screenshot::parse_screenshot_name;
 use otm_core::state::State;
 use otm_core::time::Timestamp;
 
@@ -17,42 +17,11 @@ fn ts(s: &str) -> Timestamp {
     s.parse().unwrap()
 }
 
-/// 和 `otm-replay` 一样把日志和截图合起来喂给状态机。
+/// 用 `otm-replay` 同一套合并逻辑跑一份 fixtures。
 fn replay(log: &str, shots: &str) -> (Vec<Event>, State) {
     let log_text = std::fs::read_to_string(fixture(log)).unwrap();
     let shots_text = std::fs::read_to_string(fixture(shots)).unwrap();
-
-    enum Input {
-        Log(Timestamp, LogLine),
-        Shot(Screenshot),
-    }
-    let mut inputs = Vec::new();
-    for line in log_text.lines() {
-        if let Some(p) = parse_line(line) {
-            if p.kind != LogLine::Other {
-                inputs.push(Input::Log(p.time, p.kind));
-            }
-        }
-    }
-    for line in shots_text.lines() {
-        if let Some(s) = parse_screenshot_name(line.trim()) {
-            inputs.push(Input::Shot(s));
-        }
-    }
-    inputs.sort_by_key(|i| match i {
-        Input::Log(t, _) => (*t, 0u8),
-        Input::Shot(s) => (s.time, 1u8),
-    });
-
-    let mut state = State::new();
-    let mut events = Vec::new();
-    for input in inputs {
-        match input {
-            Input::Log(t, k) => events.extend(state.on_log(t, &k)),
-            Input::Shot(s) => events.extend(state.on_screenshot(&s)),
-        }
-    }
-    (events, state)
+    otm_core::state::replay(&log_text, &shots_text)
 }
 
 /// 只要不是定位的事件。
@@ -209,6 +178,42 @@ fn season_session_screenshot_positions() {
 
     // 朝向都在 [0, 360)。
     assert!(shots.iter().all(|s| (0.0..360.0).contains(&s.4)));
+}
+
+#[test]
+fn yaw_matches_the_direction_the_player_walked() {
+    // 2026-11-14 00:44–00:45 是一串边走边拍的截图：相邻两张之间走的方向和第一张的朝向
+    // 基本一致（差几度）。这条只用坐标和文件名里的朝向，不经过 yaw 公式，
+    // 所以能抓住"0 度朝哪、往哪边转"这类约定错误：反过来（-yaw）或者差 90 度都对不上。
+    let shots_text = std::fs::read_to_string(fixture("screenshot_names.txt")).unwrap();
+    let walk: Vec<_> = shots_text
+        .lines()
+        .map(str::trim)
+        .filter(|n| n.starts_with("2026-11-14[00-4"))
+        .filter_map(parse_screenshot_name)
+        .collect();
+    assert!(walk.len() >= 10, "这一串截图少了几张：{}", walk.len());
+
+    let mut checked = 0;
+    for pair in walk.windows(2) {
+        let (a, b) = (&pair[0], &pair[1]);
+        let (dx, dz) = (b.x - a.x, b.z - a.z);
+        let dist = dx.hypot(dz);
+        if !(1.0..15.0).contains(&dist) {
+            continue;
+        }
+        // 走的方向，和 yaw 同一套约定：0 度朝 +z，顺时针增大。
+        let walked = dx.atan2(dz).to_degrees().rem_euclid(360.0);
+        let diff = ((walked - a.yaw + 180.0).rem_euclid(360.0)) - 180.0;
+        assert!(
+            diff.abs() < 12.0,
+            "{} 走到 {walked:.1} 度，朝向 {:.1} 度，差 {diff:.1} 度",
+            a.time,
+            a.yaw
+        );
+        checked += 1;
+    }
+    assert!(checked >= 10, "checked = {checked}");
 }
 
 #[test]

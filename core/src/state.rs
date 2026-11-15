@@ -1,16 +1,22 @@
 //! 状态机：吃进日志行和截图文件名，维护状态快照，吐出事件。
 //!
 //! 它不认识文件，只认识"某一时刻发生了什么事"，所以监听（[`crate::watcher`]）和
-//! 回放（`otm-replay`）可以喂同一份数据、得到同一串事件。
+//! 回放（[`replay`]）可以喂同一份数据、得到同一串事件。
 //!
 //! 几条规则：
 //!
-//! - 进局记录里的角色编号等于 PMC 编号加一，这一局就是 Scav。
+//! - 进局记录里的角色编号等于 PMC 编号加一，这一局就是 Scav。两个编号不知道哪个时
+//!   一律按 PMC 算（见 [`State::is_scav`]）。
 //! - `GameStarted` 之后出现的 `Disposing BEClient` 表示离开对局，清空本局轨迹。
 //!   对局开始前出现的 `Disposing BEClient`（游戏启动时 BattleEye 的初始化）不算。
-//! - 日志里的 `Position:` 只在加载完地图之后、离开对局之前算数。
-//!   加载地图之前的那几条是上一局残留的坐标，此时地图还不知道是哪张。
+//! - 日志里的 `Position:` 只在 `GameStarted` 之后、离开对局之前算数。加载地图之前的那几条
+//!   是上一局残留的坐标，此时地图还不知道是哪张；`GameStarted` 之前 8 毫秒的那条是出生点，
+//!   紧接着会再报一次。
+//! - 截图是直接观测，什么时候拍的都算一次定位；轨迹在每次开始加载地图和离开对局时清空，
+//!   所以快照里的轨迹就是这一局的。
 //! - 同一时刻、同一坐标的重复记录只算一次（日志里偶尔有完全一样的连续两行）。
+//! - 轨迹按到达顺序追加。调用方按时间喂进来，所以就是时间顺序；截图的时间只到分钟，
+//!   同一分钟里的一张截图可能比前一条日志定位的时间早不到一分钟。
 
 use crate::event::{
     Event, Mode, PositionSource, RaidMode, Snapshot, SnapshotPaths, SnapshotPosition,
@@ -82,14 +88,27 @@ impl State {
         }
     }
 
-    /// 当前已经知道的地图名（加载中或对局中）。
-    pub fn current_map(&self) -> Option<&str> {
-        self.raid.as_ref().map(|r| r.map.as_str())
-    }
-
     /// 当前是否在一局里（从 `GameStarted` 到离开对局）。
     pub fn in_raid(&self) -> bool {
         self.raid.as_ref().is_some_and(|r| r.started)
+    }
+
+    /// 游戏重启（换到新的日志目录）时调用：上一次启动留下的东西都不算了。
+    ///
+    /// 返回要说给界面的事件：当时还在一局里（或者正在加载）就补一个 `raid_ended`，
+    /// 否则界面会一直显示那一局。
+    pub fn start_game_session(&mut self, time: Timestamp) -> Vec<Event> {
+        let was_in_raid = self.raid.is_some();
+        self.raid = None;
+        self.pending_profile_id = None;
+        self.pmc_profile_id = None;
+        self.position = None;
+        self.trail.clear();
+        if was_in_raid {
+            vec![Event::RaidEnded { time }]
+        } else {
+            Vec::new()
+        }
     }
 
     /// 吃一条日志记录。返回它引起的事件。
@@ -110,13 +129,16 @@ impl State {
                     self.end_raid();
                     events.push(Event::RaidEnded { time });
                 }
-                let same_map = self
+                // 同一张图连着报两次加载，只算一次。
+                if self
                     .raid
                     .as_ref()
-                    .is_some_and(|r| r.map == *map && !r.started);
-                if same_map {
+                    .is_some_and(|r| r.map == *map && !r.started)
+                {
                     return events;
                 }
+                // 新的一局：上一局的轨迹和定位都不算了。
+                self.clear_positions();
                 self.pending_profile_id = None;
                 self.raid = Some(RaidState {
                     map: map.clone(),
@@ -137,7 +159,7 @@ impl State {
                 raid_mode,
                 profile_id,
             } => {
-                let raid_mode = RaidMode::from_log(raid_mode);
+                let raid_mode = raid_mode.as_deref().and_then(RaidMode::from_log);
                 // 先记下角色编号，`GameStarted` 时要用它判断是不是 Scav。
                 if let Some(id) = profile_id {
                     self.pending_profile_id = Some(id.clone());
@@ -145,9 +167,11 @@ impl State {
                 match self.raid.as_mut() {
                     Some(raid) => {
                         raid.map = map.clone();
-                        raid.raid_mode = raid_mode;
+                        raid.raid_mode = raid_mode.or(raid.raid_mode);
                     }
                     None => {
+                        // 没有加载记录就进局（日志被截断过）：从这里开始算新的一局。
+                        self.clear_positions();
                         self.raid = Some(RaidState {
                             map: map.clone(),
                             started: false,
@@ -170,6 +194,8 @@ impl State {
                 let raid_mode = raid.raid_mode.unwrap_or(RaidMode::Online);
                 let scav = self.is_scav();
                 let map = raid.map.clone();
+                // 新的对局从空轨迹开始。
+                self.clear_positions();
                 if let Some(raid) = self.raid.as_mut() {
                     raid.started = true;
                     raid.scav = scav;
@@ -184,10 +210,7 @@ impl State {
             }
 
             LogLine::Position { x, y, z } => {
-                let Some(raid) = self.raid.as_ref() else {
-                    return Vec::new();
-                };
-                if !raid.started {
+                if !self.in_raid() {
                     return Vec::new();
                 }
                 self.push_position(time, *x, *y, *z, None, PositionSource::Log)
@@ -217,7 +240,6 @@ impl State {
     /// 吃一张截图（文件名里的时间和坐标）。返回它引起的事件。
     ///
     /// 菜单里的截图解析出来是 `None`，调用方直接跳过。
-    /// 截图的时间只精确到分钟，所以轨迹按时间排序时会和日志里的定位交错。
     pub fn on_screenshot(&mut self, shot: &Screenshot) -> Vec<Event> {
         self.push_position(
             shot.time,
@@ -232,24 +254,28 @@ impl State {
     }
 
     /// 进局记录里的角色编号是不是 PMC 编号加一。
+    ///
+    /// 两个编号缺一个，或者两个都对不上（换了账号、日志里漏了 PMC 编号），一律当 PMC。
+    /// 宁可把 Scav 局显示成 PMC，也不要把 PMC 局显示成 Scav。
     fn is_scav(&self) -> bool {
         let (Some(pending), Some(pmc)) = (&self.pending_profile_id, &self.pmc_profile_id) else {
             return false;
         };
-        if pending == pmc {
-            return false;
-        }
-        is_one_more(pending, pmc)
+        pending != pmc && is_one_more(pending, pmc)
     }
 
     fn end_raid(&mut self) {
         self.raid = None;
         self.pending_profile_id = None;
+        self.clear_positions();
+    }
+
+    fn clear_positions(&mut self) {
         self.position = None;
         self.trail.clear();
     }
 
-    /// 记一次定位。和上一个点完全一样时忽略。
+    /// 记一次定位，追加到轨迹末尾。和上一个点完全一样时忽略。
     fn push_position(
         &mut self,
         time: Timestamp,
@@ -273,18 +299,9 @@ impl State {
             source,
             time,
         });
-
-        // 按时间插进去，保持轨迹有序。同一时间的新点排在已有的后面。
-        let point = TrailPoint { x, y, z, time };
-        let insert_at = self.trail.partition_point(|p| p.time <= time);
-        let at_end = insert_at == self.trail.len();
-        self.trail.insert(insert_at, point);
+        self.trail.push(TrailPoint { x, y, z, time });
         if self.trail.len() > MAX_TRAIL {
-            if at_end {
-                self.trail.remove(0);
-            } else {
-                self.trail.pop();
-            }
+            self.trail.remove(0);
         }
 
         Some(Event::Position {
@@ -296,6 +313,58 @@ impl State {
             source,
         })
     }
+}
+
+/// 把一份日志文本和一份截图文件名清单按时间合起来喂给状态机，返回事件和最终状态。
+///
+/// 截图清单每行一个文件名（可以带路径），空行跳过。清单里的顺序不重要，按文件名里的时间排。
+/// 同一时间点上日志在先、截图在后：日志里的定位精确到毫秒，截图只到分钟，
+/// 这样同一分钟里截图排在日志之后，截图（带朝向）就是这一刻最新的定位。
+///
+/// 回放（`otm-replay`）和测试都用它，保证两边看到的是同一串事件。
+pub fn replay(log_text: &str, shot_names: &str) -> (Vec<Event>, State) {
+    enum Input {
+        Log(Timestamp, LogLine),
+        Shot(Screenshot),
+    }
+
+    let mut inputs: Vec<Input> = Vec::new();
+    for line in log_text.lines() {
+        if let Some(parsed) = crate::log::parse_line(line) {
+            if parsed.kind != LogLine::Other {
+                inputs.push(Input::Log(parsed.time, parsed.kind));
+            }
+        }
+    }
+    for line in shot_names.lines() {
+        if let Some(shot) = crate::screenshot::parse_screenshot_name(line) {
+            inputs.push(Input::Shot(shot));
+        }
+    }
+
+    // 排序是稳定的，同一时间、同一类的相对顺序保持不变。
+    inputs.sort_by(|a, b| {
+        let (ta, ra) = match a {
+            Input::Log(t, _) => (*t, 0u8),
+            Input::Shot(s) => (s.time, 1u8),
+        };
+        let (tb, rb) = match b {
+            Input::Log(t, _) => (*t, 0u8),
+            Input::Shot(s) => (s.time, 1u8),
+        };
+        ta.cmp(&tb).then(ra.cmp(&rb))
+    });
+
+    let mut state = State::new();
+    let mut events = Vec::new();
+    for input in inputs {
+        let new = match input {
+            Input::Log(time, kind) => state.on_log(time, &kind),
+            Input::Shot(shot) => state.on_screenshot(&shot),
+        };
+        events.extend(new);
+    }
+    (events, state)
 }
 
 /// 判断 `id` 是不是 `base` 加一。角色编号是 24 位十六进制，超出 u64 的范围，
@@ -362,39 +431,41 @@ mod tests {
         format!("{t}|1.3.0.2.48779|Info|application|{msg}")
     }
 
+    fn scene(map: &str) -> String {
+        format!("scene preset path:maps/x.bundle rcid:{map}.scenespreset.asset")
+    }
+
+    fn game_create(profile: &str, raid_mode: &str) -> String {
+        format!(
+            "TRACE-NetworkGameCreate profileStatus: 'Profileid: {profile}, Status: Busy, \
+             RaidMode: {raid_mode}, Ip: 1.2.3.4, Port: 17000, Location: bigmap, Sid: x, \
+             GameMode: deathmatch, shortId: y'"
+        )
+    }
+
+    /// 走到"地图已知、对局已开始"。
+    fn into_raid(state: &mut State, map: &str, profile: &str) -> Vec<Event> {
+        feed_log(state, &line("2026-11-15 17:53:17.104", &scene(map)));
+        feed_log(state, &line("2026-11-15 17:58:38.249", &game_create(profile, "Online")));
+        feed_log(state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"))
+    }
+
     #[test]
     fn scav_is_pmc_id_plus_one() {
         let mut state = State::new();
         feed_log(
             &mut state,
-            &line(
-                "2026-11-15 17:47:56.021",
-                &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000"),
-            ),
+            &line("2026-11-15 17:47:56.021", &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000")),
         );
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:53:17.104",
-                "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
-            ),
-        );
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:58:38.249",
-                &format!("TRACE-NetworkGameCreate profileStatus: 'Profileid: {SCAV}, Status: Busy, RaidMode: Online, Ip: 1.2.3.4, Port: 17000, Location: bigmap, Sid: x, GameMode: deathmatch, shortId: y'"),
-            ),
-        );
-        let events = feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"));
+        let events = into_raid(&mut state, "bigmap", SCAV);
         assert_eq!(
-            events,
-            vec![Event::RaidStarted {
+            events.last(),
+            Some(&Event::RaidStarted {
                 time: ts("2026-11-15T18:00:40.493"),
                 map: "bigmap".into(),
                 scav: true,
                 raid_mode: RaidMode::Online,
-            }]
+            })
         );
     }
 
@@ -403,28 +474,36 @@ mod tests {
         let mut state = State::new();
         feed_log(
             &mut state,
-            &line(
-                "2026-11-15 17:47:56.021",
-                &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000"),
-            ),
+            &line("2026-11-15 17:47:56.021", &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000")),
         );
+        let events = into_raid(&mut state, "bigmap", PMC);
+        match events.last() {
+            Some(Event::RaidStarted { scav, .. }) => assert!(!scav),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_pmc_id_is_not_scav() {
+        // 核心启动晚了，没看到 PrepareSelectedProfileLocally：只能当 PMC。
+        let mut state = State::new();
+        let events = into_raid(&mut state, "bigmap", SCAV);
+        match events.last() {
+            Some(Event::RaidStarted { scav, .. }) => assert!(!scav),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn unrelated_profile_id_is_not_scav() {
+        let mut state = State::new();
         feed_log(
             &mut state,
-            &line(
-                "2026-11-15 17:53:17.104",
-                "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
-            ),
+            &line("2026-11-15 17:47:56.021", &format!("PrepareSelectedProfileLocally ProfileId:{PMC} AccountId:1000000")),
         );
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:58:38.249",
-                &format!("TRACE-NetworkGameCreate profileStatus: 'Profileid: {PMC}, Status: Busy, RaidMode: Online, Ip: 1.2.3.4, Port: 17000, Location: bigmap, Sid: x, GameMode: deathmatch, shortId: y'"),
-            ),
-        );
-        let events = feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"));
-        match events.as_slice() {
-            [Event::RaidStarted { scav, .. }] => assert!(!scav),
+        let events = into_raid(&mut state, "bigmap", "bbbbbbbbbbbbbbbbbbbb0000");
+        match events.last() {
+            Some(Event::RaidStarted { scav, .. }) => assert!(!scav),
             other => panic!("{other:?}"),
         }
     }
@@ -444,27 +523,14 @@ mod tests {
     #[test]
     fn disposing_before_game_started_is_ignored() {
         let mut state = State::new();
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:48:13.422",
-                "Disposing BEClient",
-            ),
-        );
+        feed_log(&mut state, &line("2026-11-15 17:48:13.422", "Disposing BEClient"));
         assert_eq!(state.snapshot().raid, None);
     }
 
     #[test]
     fn raid_end_clears_trail() {
         let mut state = State::new();
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:53:17.104",
-                "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
-            ),
-        );
-        feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"));
+        into_raid(&mut state, "bigmap", PMC);
         feed_shot(
             &mut state,
             "2026-11-15[18-02]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png",
@@ -479,29 +545,67 @@ mod tests {
     }
 
     #[test]
+    fn new_loading_clears_previous_trail() {
+        // 上一局没收到 Disposing，直接开始加载下一局。
+        let mut state = State::new();
+        into_raid(&mut state, "bigmap", PMC);
+        feed_shot(
+            &mut state,
+            "2026-11-15[18-02]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png",
+        );
+        assert_eq!(state.snapshot().trail.len(), 1);
+        let events = feed_log(&mut state, &line("2026-11-15 18:18:10.277", &scene("factory4_day")));
+        assert_eq!(
+            events,
+            vec![
+                Event::RaidEnded { time: ts("2026-11-15T18:18:10.277") },
+                Event::RaidLoading {
+                    time: ts("2026-11-15T18:18:10.277"),
+                    map: "factory4_day".into()
+                },
+            ]
+        );
+        let snap = state.snapshot();
+        assert!(snap.trail.is_empty());
+        assert_eq!(snap.position, None);
+    }
+
+    #[test]
+    fn repeated_loading_of_the_same_map_is_one_event() {
+        let mut state = State::new();
+        let first = feed_log(&mut state, &line("2026-11-15 17:53:17.104", &scene("bigmap")));
+        assert_eq!(first.len(), 1);
+        let second = feed_log(&mut state, &line("2026-11-15 17:55:28.231", &scene("bigmap")));
+        assert!(second.is_empty(), "{second:?}");
+    }
+
+    #[test]
     fn log_position_needs_known_map() {
         let mut state = State::new();
         let events = feed_log(
             &mut state,
-            &line(
-                "2026-11-15 18:00:40.485",
-                "Reason:Lift, Position:(1.0, 2.0, 3.0), SpeedLimit:0.6",
-            ),
+            &line("2026-11-15 18:00:40.485", "Reason:Lift, Position:(1.0, 2.0, 3.0), SpeedLimit:0.6"),
         );
         assert!(events.is_empty());
     }
 
     #[test]
+    fn log_position_needs_game_started() {
+        // 地图已知但还没 GameStarted：出生点那条不算。
+        let mut state = State::new();
+        feed_log(&mut state, &line("2026-11-15 17:53:17.104", &scene("bigmap")));
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-15 18:00:40.485", "Reason:Lift, Position:(1.0, 2.0, 3.0), SpeedLimit:0.6"),
+        );
+        assert!(events.is_empty());
+        assert!(state.snapshot().trail.is_empty());
+    }
+
+    #[test]
     fn duplicate_positions_are_merged() {
         let mut state = State::new();
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:53:17.104",
-                "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
-            ),
-        );
-        feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"));
+        into_raid(&mut state, "bigmap", PMC);
         let p = "Reason:PacketsQueue, Position:(351.830, 1.268, -60.684), SpeedLimit:0.6";
         assert_eq!(feed_log(&mut state, &line("2026-11-15 18:24:17.607", p)).len(), 1);
         // 同一坐标、同一时刻的重复行只算一次。
@@ -513,58 +617,91 @@ mod tests {
     }
 
     #[test]
-    fn trail_is_sorted_by_time() {
+    fn positions_keep_arrival_order() {
         let mut state = State::new();
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:53:17.104",
-                "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
-            ),
-        );
-        feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"));
+        into_raid(&mut state, "bigmap", PMC);
         feed_log(
             &mut state,
             &line("2026-11-15 18:10:00.000", "Reason:PacketsQueue, Position:(9.0, 9.0, 9.0)"),
         );
-        // 截图只精确到分钟，18:05 的截图排在 18:10 的日志定位之前。
+        // 截图只精确到分钟：18:10 拍的截图时间记成 18:10:00，比上一条日志早 0 秒，
+        // 但它确实是后到的，轨迹按到达顺序追加，位置也是它。
         feed_shot(
             &mut state,
-            "2026-11-15[18-05]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png",
+            "2026-11-15[18-10]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png",
         );
-        assert_eq!(state.snapshot().trail.len(), 2);
-        let trail = state.snapshot().trail;
-        assert_eq!(trail.len(), 2);
-        assert_eq!(trail[0].x, -232.18);
-        assert_eq!(trail[1].x, 9.0);
+        let snap = state.snapshot();
+        assert_eq!(snap.trail.len(), 2);
+        assert_eq!(snap.trail[0].x, 9.0);
+        assert_eq!(snap.trail[1].x, -232.18);
+        assert_eq!(snap.position.unwrap().source, PositionSource::Screenshot);
     }
 
     #[test]
-    fn screenshot_after_log_position_goes_last() {
+    fn trail_is_capped_by_dropping_the_oldest() {
         let mut state = State::new();
-        feed_log(
-            &mut state,
-            &line(
-                "2026-11-15 17:53:17.104",
-                "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
-            ),
-        );
-        feed_log(&mut state, &line("2026-11-15 18:00:40.493", "GameStarted:1(1) real:2(2) diff:3"));
-        feed_log(
-            &mut state,
-            &line("2026-11-15 18:10:00.000", "Reason:PacketsQueue, Position:(9.0, 9.0, 9.0)"),
-        );
-        feed_shot(
-            &mut state,
-            "2026-11-15[18-20]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png",
-        );
+        into_raid(&mut state, "bigmap", PMC);
+        for i in 0..(MAX_TRAIL + 10) {
+            let t = Timestamp::from_ymd_hms_milli(2026, 11, 15, 18, 0, 0, 0).unwrap();
+            state.push_position(t, i as f64, 0.0, 0.0, None, PositionSource::Log);
+        }
         let trail = state.snapshot().trail;
-        assert_eq!(trail.len(), 2);
-        assert_eq!(trail[0].x, 9.0);
-        assert_eq!(trail[1].x, -232.18);
+        assert_eq!(trail.len(), MAX_TRAIL);
+        // 最早的点被丢掉了，最新的还在。
+        assert_eq!(trail[0].x, 10.0);
+        assert_eq!(trail.last().unwrap().x, (MAX_TRAIL + 9) as f64);
+    }
+
+    #[test]
+    fn start_game_session_ends_the_raid() {
+        let mut state = State::new();
+        into_raid(&mut state, "bigmap", PMC);
+        let events = state.start_game_session(ts("2026-11-15T18:40:00.000"));
         assert_eq!(
-            state.snapshot().position.unwrap().source,
-            PositionSource::Screenshot
+            events,
+            vec![Event::RaidEnded { time: ts("2026-11-15T18:40:00.000") }]
         );
+        let snap = state.snapshot();
+        assert_eq!(snap.raid, None);
+        assert!(snap.trail.is_empty());
+
+        // 不在对局里时什么也不说。
+        assert!(state.start_game_session(ts("2026-11-15T18:41:00.000")).is_empty());
+    }
+
+    #[test]
+    fn session_mode_is_reported_once() {
+        let mut state = State::new();
+        let first = feed_log(&mut state, &line("2026-11-15 17:47:10.253", "Session mode: PvpSeason"));
+        assert_eq!(
+            first,
+            vec![Event::Session { time: ts("2026-11-15T17:47:10.253"), mode: Mode::PvpSeason }]
+        );
+        assert!(feed_log(&mut state, &line("2026-11-15 17:48:10.253", "Session mode: PvpSeason")).is_empty());
+        let changed = feed_log(&mut state, &line("2026-11-15 17:49:10.253", "Session mode: Pve"));
+        assert_eq!(changed.len(), 1);
+    }
+
+    #[test]
+    fn replay_merges_log_and_screenshots_in_time_order() {
+        let log_text = concat!(
+            "2026-11-15 17:53:17.104|1.3.0.2.48779|Info|application|scene preset path:maps/x.bundle rcid:bigmap.scenespreset.asset\n",
+            "2026-11-15 18:00:40.493|1.3.0.2.48779|Info|application|GameStarted:1(1) real:2(2) diff:3\n",
+            "2026-11-15 18:10:00.000|1.3.0.2.48779|Info|application|Reason:PacketsQueue, Position:(9.0, 9.0, 9.0)\n",
+        );
+        let shots = "2026-11-15[18-05]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png\n";
+        let (events, state) = replay(log_text, shots);
+        let kinds: Vec<&str> = events
+            .iter()
+            .map(|e| match e {
+                Event::RaidLoading { .. } => "loading",
+                Event::RaidStarted { .. } => "started",
+                Event::Position { source: PositionSource::Screenshot, .. } => "shot",
+                Event::Position { .. } => "log",
+                _ => "other",
+            })
+            .collect();
+        assert_eq!(kinds, vec!["loading", "started", "shot", "log"]);
+        assert_eq!(state.snapshot().trail.len(), 2);
     }
 }

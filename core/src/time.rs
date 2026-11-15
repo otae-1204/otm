@@ -69,19 +69,23 @@ impl Timestamp {
         )
     }
 
-    /// 从时间点里取出日期部分，时间归零。用来把日志里的时间和截图文件名里的日期拼起来。
-    pub fn date_only(&self) -> Self {
-        Self {
-            date: self.date,
+    /// 现在（本地墙上时间）。拿不到本地时区时退回 UTC。
+    pub fn now_local() -> Self {
+        let now = time::OffsetDateTime::now_local()
+            .unwrap_or_else(|_| time::OffsetDateTime::now_utc());
+        Self::from_ymd_hms_milli(
+            now.year(),
+            now.month() as u8,
+            now.day(),
+            now.hour(),
+            now.minute(),
+            now.second(),
+            now.millisecond(),
+        )
+        .unwrap_or_else(|| Self {
+            date: Date::from_calendar_date(1970, Month::January, 1).expect("1970 年 1 月 1 日总是合法的"),
             time: Time::MIDNIGHT,
-        }
-    }
-
-    /// 换成日志和截图文件名里的写法，例如 `2026-11-15 18:00:40.493`。
-    pub fn to_log_string(&self) -> String {
-        let (y, mo, d) = self.date();
-        let (h, mi, s, ms) = self.clock();
-        format!("{y:04}-{mo:02}-{d:02} {h:02}:{mi:02}:{s:02}.{ms:03}")
+        })
     }
 }
 
@@ -172,7 +176,6 @@ mod tests {
     fn display_is_iso_local_with_millis() {
         let t = Timestamp::from_ymd_hms_milli(2026, 11, 15, 18, 0, 40, 493).unwrap();
         assert_eq!(t.to_string(), "2026-11-15T18:00:40.493");
-        assert_eq!(t.to_log_string(), "2026-11-15 18:00:40.493");
     }
 
     #[test]
