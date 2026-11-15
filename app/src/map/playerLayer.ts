@@ -1,7 +1,7 @@
 // 自己的位置、轨迹、撤离点/危险区的外框。
 
 import L from "leaflet";
-import type { Annotation } from "../data/annotations";
+import type { Annotation, GamePoint } from "../data/annotations";
 import type { MapMeta } from "../data/mapsMeta";
 import type { Position, TrailPoint } from "../types";
 import { playerIcon, staleLabelIcon, type PlayerLook } from "./icons";
@@ -84,33 +84,73 @@ export interface OutlineLayer {
   clear(): void;
 }
 
-/** 只画危险区的范围（DESIGN 7.1）：红色斜纹，这里用虚线加半透明填充近似。 */
-const OUTLINE_STYLE: Record<string, { color: string; fill: string; weight: number; dash?: string }> = {
-  hazard: { color: "#ff5d5d", fill: "#ff5d5d", weight: 1.5, dash: "6 5" },
-};
+/**
+ * 危险区的范围（DESIGN 7.1）：红色斜纹填充 + 虚线边框，中间放危险区图标。
+ * 斜纹用 SVG pattern 画，图案跟着地图一起缩放。
+ */
+const HAZARD_COLOR = "#ff5d5d";
+const PATTERN_ID = "otm-hazard-stripes";
+
+/**
+ * 图案要放进画多边形的那个 svg。叠底层（底图 SVG）也是 overlay-pane 里的一个 svg，
+ * 按选择器取第一个可能取到它，图案就引用不到，所以这里由调用方传进正确的 svg。
+ */
+function ensurePattern(svg: SVGSVGElement) {
+  if (svg.querySelector(`#${PATTERN_ID}`)) return;
+  const ns = "http://www.w3.org/2000/svg";
+  const defs = document.createElementNS(ns, "defs");
+  const pattern = document.createElementNS(ns, "pattern");
+  pattern.setAttribute("id", PATTERN_ID);
+  pattern.setAttribute("width", "14");
+  pattern.setAttribute("height", "14");
+  pattern.setAttribute("patternUnits", "userSpaceOnUse");
+  pattern.setAttribute("patternTransform", "rotate(45)");
+  const bg = document.createElementNS(ns, "rect");
+  bg.setAttribute("width", "14");
+  bg.setAttribute("height", "14");
+  bg.setAttribute("fill", "rgba(255,93,93,.08)");
+  const line = document.createElementNS(ns, "line");
+  line.setAttribute("x1", "0");
+  line.setAttribute("y1", "0");
+  line.setAttribute("x2", "0");
+  line.setAttribute("y2", "14");
+  line.setAttribute("stroke", HAZARD_COLOR);
+  line.setAttribute("stroke-opacity", ".45");
+  line.setAttribute("stroke-width", "5");
+  pattern.append(bg, line);
+  defs.appendChild(pattern);
+  svg.insertBefore(defs, svg.firstChild);
+}
 
 export function createOutlineLayer(map: L.Map): OutlineLayer {
   const group = L.layerGroup().addTo(map);
   return {
     render(items) {
       group.clearLayers();
-      for (const a of items) {
-        if (!a.outline || a.outline.length < 3) continue;
-        const st = OUTLINE_STYLE[a.category];
-        if (!st) continue;
-        L.polygon(
+      const hazards = items.filter(
+        (a): a is Annotation & { outline: GamePoint[] } =>
+          a.category === "hazard" && !!a.outline && a.outline.length >= 3,
+      );
+      if (hazards.length === 0) return;
+      const polys: L.Polygon[] = [];
+      for (const a of hazards) {
+        polys.push(L.polygon(
           a.outline.map((p) => [p.z, p.x] as [number, number]),
           {
-            color: st.color,
-            weight: st.weight,
-            opacity: 0.75,
-            fillColor: st.fill,
-            fillOpacity: 0.16,
-            dashArray: st.dash,
+            color: HAZARD_COLOR,
+            weight: 1.5,
+            opacity: 0.8,
+            fillColor: `url(#${PATTERN_ID})`,
+            fillOpacity: 1,
+            dashArray: "5 4",
             interactive: false,
           },
-        ).addTo(group);
+        ).addTo(group));
       }
+      // 图案放进多边形自己所在的 svg，否则引用不到
+      const el = polys[0]?.getElement() as SVGPathElement | null | undefined;
+      const svg = el?.ownerSVGElement;
+      if (svg) ensurePattern(svg);
     },
     clear() {
       group.clearLayers();

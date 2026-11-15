@@ -51,6 +51,18 @@ export const CATEGORY_ORDER: CategoryId[] = [
   "gun",
 ];
 
+/** 各大类的颜色（DESIGN 7.1 与 mockup2.html 的 --c-* 变量）。合并圆和子类 chip 用它。 */
+export const CATEGORY_COLOR: Record<CategoryId, string> = {
+  extract: "#3ddc84",
+  transit: "#ff5d5d",
+  lock: "#f5a524",
+  hazard: "#f5a524",
+  loot: "#9d8cff",
+  spawn: "#7d8794",
+  switch: "#7d8794",
+  gun: "#7d8794",
+};
+
 export const CATEGORY_NAMES: Record<CategoryId, string> = {
   extract: "撤离点",
   transit: "转移点",
@@ -63,7 +75,7 @@ export const CATEGORY_NAMES: Record<CategoryId, string> = {
 };
 
 /** 上游 lootContainers 的 normalizedName → 图标（app/public/icons/container_*.png）。 */
-const CONTAINER_ICON: Record<string, string> = {
+export const CONTAINER_ICON: Record<string, string> = {
   safe: "safe",
   "bank-safe": "safe",
   drawer: "drawer",
@@ -415,18 +427,28 @@ export function layerName(name: string) {
   return LAYER_NAMES[name] ?? name;
 }
 
-/** 地图上的地名。上游不按楼层过滤，这里照搬。 */
-export function mapLabels(meta: MapMeta | null): { text: string; x: number; z: number; y: number }[] {
+/**
+ * 地图上的地名。上游的 labels 只有英文（Old Gas、Dorms 这些），
+ * 中文名要按 maps_zh 里的同名键取；没有中文名的就不显示。
+ */
+export function mapLabels(
+  meta: MapMeta | null,
+  zh: Translations | null,
+): { text: string; x: number; z: number; y: number }[] {
   if (!meta?.labels) return [];
   // 与上游一致：地名默认放在整张图高度范围的中点上
   const mid = meta.heightRange ? (meta.heightRange[0] + meta.heightRange[1]) / 2 : 0;
-  return meta.labels.map((l) => {
+  const out: { text: string; x: number; z: number; y: number }[] = [];
+  for (const l of meta.labels) {
+    const text = zh?.[l.text];
+    if (!text) continue;
     const y =
       l.position.length > 2
         ? l.position[2]
         : l.top !== undefined && l.bottom !== undefined
           ? (l.top + l.bottom) / 2
           : mid;
-    return { text: l.text, x: l.position[0], z: l.position[1], y };
-  });
+    out.push({ text, x: l.position[0], z: l.position[1], y });
+  }
+  return out;
 }

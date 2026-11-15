@@ -181,12 +181,6 @@ function PresetEditor({ set }: { set: AnnotationSet }) {
           })}
         </div>
         <div className="h">显示</div>
-        <button className="row" style={{ width: "100%" }} onClick={() => patch((f) => ({ ...f, onlyCurrentTask: !f.onlyCurrentTask }))}>
-          仅当前任务
-          <span className="r">
-            <span className={`sw${p.filters.onlyCurrentTask ? "" : " off"}`} />
-          </span>
-        </button>
         <button className="row" style={{ width: "100%" }} onClick={() => patch((f) => ({ ...f, trail: !f.trail }))}>
           轨迹
           <span className="r">

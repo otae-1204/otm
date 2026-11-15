@@ -12,7 +12,7 @@ export function iconUrl(name: string) {
   return `${ICON_DIR}${name}.png`;
 }
 
-/** 标注图标：默认 26px，密集时由上层合并。 */
+/** 标注图标：尺寸随缩放变化，由上层决定；密集时由上层合并。 */
 export function annotationIcon(a: Annotation, size = 26): L.DivIcon {
   return L.divIcon({
     className: "otm-anno",
@@ -22,10 +22,11 @@ export function annotationIcon(a: Annotation, size = 26): L.DivIcon {
   });
 }
 
-export function clusterIcon(count: number): L.DivIcon {
+/** 合并圆：颜色跟着大类走（DESIGN 7.1），黄色只留给「当前目标」。 */
+export function clusterIcon(count: number, color: string): L.DivIcon {
   return L.divIcon({
     className: "otm-cluster",
-    html: `<div>${count}</div>`,
+    html: `<div style="--c:${color}">${count}</div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
   });

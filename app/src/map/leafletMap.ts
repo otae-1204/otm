@@ -8,6 +8,7 @@
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import type { Translations } from "../data/loader";
 import type { MapMeta } from "../data/mapsMeta";
 import { crsFor, latLngBoundsOf, scaledBounds } from "./crs";
 import { mapLabels } from "../data/annotations";
@@ -20,7 +21,7 @@ export interface MapController {
   /** 每次换图 +1。 */
   mapVersion(): number;
   /** 换图（重建整个地图实例）。 */
-  setMap(meta: MapMeta | null, style: BaseStyle): void;
+  setMap(meta: MapMeta | null, style: BaseStyle, zh: Translations | null): void;
   /** 当前楼层；-1 表示不按楼层过滤。 */
   setLayer(index: number): void;
   /** 把视野放到整张图上。 */
@@ -29,6 +30,10 @@ export interface MapController {
   focus(x: number, z: number, zoom?: number): void;
   /** 当前缩放级别。 */
   zoom(): number;
+  /** 整张图刚好铺满窗口时的缩放级别，标注密度按它算相对级数。 */
+  fitZoom(): number;
+  /** 换一份中文翻译后重画地名。 */
+  setLabels(zh: Translations | null): void;
   onChange(fn: () => void): void;
   destroy(): void;
 }
@@ -70,8 +75,8 @@ const BASE_CSS = `
 /* 选中的楼层：不压暗地面，只把这一层提亮，免得整张图变黑 */
 .otm-svg-base .otm-level { filter: brightness(1.75) saturate(1.15); }
 .otm-label {
-  color: #7c8797; font-size: 12px; font-weight: 500; white-space: nowrap;
-  text-shadow: 0 1px 3px #0b0d10, 0 0 6px #0b0d10; pointer-events: none;
+  color: rgba(223,229,236,.34); font-size: 11px; font-weight: 400; letter-spacing: .2px;
+  white-space: nowrap; text-shadow: none; pointer-events: none;
 }
 `;
 
@@ -90,6 +95,7 @@ interface Runtime {
   baseTile: L.TileLayer | null;
   levelTiles: Map<number, L.TileLayer>;
   labels: L.LayerGroup | null;
+  fitZoom: number;
 }
 
 const emptyRuntime = (): Runtime => ({
@@ -98,6 +104,7 @@ const emptyRuntime = (): Runtime => ({
   baseTile: null,
   levelTiles: new Map(),
   labels: null,
+  fitZoom: 0,
 });
 
 export function createMapController(container: HTMLElement, onChange: () => void): MapController {
@@ -161,9 +168,13 @@ export function createMapController(container: HTMLElement, onChange: () => void
     emit();
   }
 
-  function addLabels(m: MapMeta, target: L.Map) {
+  function addLabels(m: MapMeta, target: L.Map, zh: Translations | null) {
+    if (rt.labels) {
+      rt.labels.remove();
+      rt.labels = null;
+    }
     const group = L.layerGroup();
-    for (const lb of mapLabels(m)) {
+    for (const lb of mapLabels(m, zh)) {
       const icon = L.divIcon({
         className: "otm-label",
         html: `<div>${escapeHtml(lb.text)}</div>`,
@@ -215,7 +226,7 @@ export function createMapController(container: HTMLElement, onChange: () => void
     applyLayer();
   }
 
-  function build(m: MapMeta | null, wantStyle: BaseStyle) {
+  function build(m: MapMeta | null, wantStyle: BaseStyle, zh: Translations | null) {
     teardown();
     meta = m;
     container.innerHTML = "";
@@ -268,8 +279,9 @@ export function createMapController(container: HTMLElement, onChange: () => void
       });
     }
 
-    addLabels(m, target);
+    addLabels(m, target, zh);
     target.fitBounds(bounds, { padding: [0, 0] });
+    rt.fitZoom = target.getZoom();
     applyLayer();
     target.on("zoomend", emit);
   }
@@ -281,8 +293,14 @@ export function createMapController(container: HTMLElement, onChange: () => void
     mapVersion() {
       return version;
     },
-    setMap(m, s) {
-      build(m, s);
+    setMap(m, s, zh) {
+      build(m, s, zh);
+    },
+    fitZoom() {
+      return rt.fitZoom;
+    },
+    setLabels(zh) {
+      if (map && meta) addLabels(meta, map, zh);
     },
     setLayer(index) {
       // 换图时楼层可能还是同一个值，但图层要重新应用，所以这里不跳过

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type L from "leaflet";
 import type { Annotation, AnnotationSet } from "../data/annotations";
 import { buildAnnotations, layerOfPoint } from "../data/annotations";
-import { dataStore, type DataBundle, type UpstreamMap } from "../data/loader";
+import { dataStore, type DataBundle, type Translations, type UpstreamMap } from "../data/loader";
 import { findMapMeta, upstreamMapOf, type MapMeta } from "../data/mapsMeta";
 import { createAnnotationLayer, type AnnotationLayer } from "./annotationsLayer";
 import { createMapController, type MapController } from "./leafletMap";
@@ -95,6 +95,8 @@ export interface LeafletOptions {
   container: HTMLDivElement | null;
   meta: MapMeta | null;
   style: "svg" | "tile";
+  /** 中文翻译，用来给地名取中文名。 */
+  zh: Translations | null;
   onPick: (a: Annotation | null) => void;
 }
 
@@ -103,19 +105,21 @@ export interface LeafletOptions {
  * 标注层、外框层、自己位置层都挂在新实例上。
  */
 export function useLeaflet(opts: LeafletOptions): MapLayers {
-  const { container, meta, style } = opts;
+  const { container, meta, style, zh } = opts;
   const [layers, setLayers] = useState<MapLayers>(NO_LAYERS);
   const pickRef = useRef(opts.onPick);
   pickRef.current = opts.onPick;
   const metaRef = useRef<MapMeta | null>(meta);
   metaRef.current = meta;
+  const zhRef = useRef<Translations | null>(zh);
+  zhRef.current = zh;
   // 数据刷新会换掉 meta 的对象，但同一张图不用重建
   const metaKey = meta?.key ?? null;
 
   useEffect(() => {
     if (!container) return;
     const controller = createMapController(container, () => {});
-    controller.setMap(metaRef.current, style);
+    controller.setMap(metaRef.current, style, zhRef.current);
     const map = controller.map;
     if (!map) {
       setLayers({ ...NO_LAYERS, controller, version: controller.mapVersion() });
@@ -135,6 +139,11 @@ export function useLeaflet(opts: LeafletOptions): MapLayers {
       setLayers(NO_LAYERS);
     };
   }, [container, metaKey, style]);
+
+  // 翻译晚到的时候补画地名，不重建地图（重建会丢视野）
+  useEffect(() => {
+    layers.controller?.setLabels(zh);
+  }, [layers.controller, layers.version, zh]);
 
   return layers;
 }

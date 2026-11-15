@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { layerName, layerOfPoint } from "./data/annotations";
+import type { MapMeta } from "./data/mapsMeta";
 import type { Annotation } from "./data/annotations";
 import { canonicalGameMap, mapChoices, mapName } from "./data/mapsMeta";
 import { effectiveFilters, prefsStore, usePrefs } from "./prefs";
@@ -20,6 +21,20 @@ import { StatusBar } from "./ui/StatusBar";
 import { IconRestart, IconSettings } from "./ui/icons";
 import { mmss } from "./util";
 import { mockHandle } from "./events/mock";
+
+/**
+ * 楼层条：从上到下高层到低层。地面不是 maps.json 里的一层（底图本身就是地面），
+ * 所以补一个「地面」项，索引 -1。
+ */
+function floorEntries(meta: MapMeta | null): { index: number; label: string }[] {
+  if (!meta?.layers || meta.layers.length === 0) return [];
+  const rows = meta.layers.map((l, i) => {
+    const hs = (l.extents ?? []).map((e) => e.height[0]);
+    return { index: i, label: layerName(l.name), h: hs.length ? Math.min(...hs) : 0 };
+  });
+  rows.push({ index: -1, label: "地面", h: 0 });
+  return rows.sort((a, b) => b.h - a.h).map(({ index, label }) => ({ index, label }));
+}
 
 export function App() {
   const state = useAppState();
@@ -67,12 +82,13 @@ export function App() {
   }, [meta?.key]);
 
   const layer = manualLayer ?? autoLayer;
+  const floors = useMemo(() => floorEntries(meta), [meta]);
 
   const onPick = useCallback((a: Annotation | null) => {
     setPicked((prev) => (a === null || prev?.a.key === a.key ? null : { a, x: 0, y: 0 }));
   }, []);
 
-  const layers = useLeaflet({ container, meta, style: prefs.baseStyle, onPick });
+  const layers = useLeaflet({ container, meta, style: prefs.baseStyle, zh: data.zh, onPick });
 
   // 卡片位置跟着地图走
   useEffect(() => {
@@ -102,12 +118,15 @@ export function App() {
   useEffect(() => {
     const map = layers.map;
     if (!map || !layers.annotations) return;
-    const draw = () => layers.annotations?.render(visible, map.getZoom());
+    const draw = () =>
+      layers.annotations?.render(visible, map.getZoom(), layers.controller?.fitZoom() ?? map.getZoom());
     draw();
     layers.outlines?.render(visible);
     map.on("zoomend", draw);
+    map.on("moveend", draw);
     return () => {
       map.off("zoomend", draw);
+      map.off("moveend", draw);
     };
   }, [layers.map, layers.annotations, layers.outlines, layers.version, visible]);
 
@@ -174,16 +193,15 @@ export function App() {
           <IconSettings />
         </button>
       </div>
-      {meta?.layers && meta.layers.length > 0 ? (
+      {floors.length > 0 ? (
         <div className="floors">
-          {meta.layers.map((l, i) => (
+          {floors.map((f) => (
             <button
-              key={l.name}
-              className={`fl${i === layer ? " on" : ""}${i === autoLayer ? " auto" : ""}`}
-              onClick={() => setManualLayer(i === autoLayer ? null : i)}
-              title={l.name}
+              key={f.index}
+              className={`fl${f.index === layer ? " on" : ""}${f.index === autoLayer ? " auto" : ""}`}
+              onClick={() => setManualLayer(f.index === autoLayer ? null : f.index)}
             >
-              {layerName(l.name)}
+              {f.label}
             </button>
           ))}
         </div>

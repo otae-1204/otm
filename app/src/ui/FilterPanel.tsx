@@ -1,11 +1,15 @@
-// 左侧：预设 chips + 大类开关 + 仅当前任务/轨迹。
+// 左侧：预设 chips + 大类开关 + 轨迹。
 // 子类开关在设置的「预设」页里（DESIGN 6.3：主窗口左侧只有大类开关）。
+//
+// 行按 mockup2.html 的 .frow：图标 + 名称 + 数量，没有开关；
+// 关掉的大类整行变淡，点整行切换。
 
 import { useState } from "react";
 import type { AnnotationSet, CategoryId } from "../data/annotations";
 import { CATEGORY_NAMES, CATEGORY_ORDER } from "../data/annotations";
 import {
   activePreset,
+  defaultFilters,
   effectiveFilters,
   newPresetId,
   prefsStore,
@@ -36,21 +40,7 @@ export function PresetChips() {
     const id = newPresetId();
     const filters: FilterState = p
       ? { ...p.filters, categories: { ...p.filters.categories }, subs: { ...p.filters.subs } }
-      : {
-          categories: {
-            extract: true,
-            transit: true,
-            lock: true,
-            hazard: true,
-            loot: true,
-            spawn: false,
-            switch: true,
-            gun: true,
-          },
-          subs: {},
-          onlyCurrentTask: false,
-          trail: true,
-        };
+      : defaultFilters(["extract", "transit", "lock", "hazard"]);
     prefsStore.update((old) => ({
       ...old,
       presets: [...old.presets, { id, name: `预设 ${old.presets.length + 1}`, filters }],
@@ -124,11 +114,11 @@ export function FilterPanel({ set }: { set: AnnotationSet }) {
     prefsStore.update((old) => ({ ...old, overrides: { ...old.overrides, [c]: next } }));
   };
 
-  const toggleFlag = (k: "onlyCurrentTask" | "trail") => {
+  const toggleTrail = () => {
     prefsStore.update((old) => ({
       ...old,
       presets: old.presets.map((p) =>
-        p.id === old.activePresetId ? { ...p, filters: { ...p.filters, [k]: !p.filters[k] } } : p,
+        p.id === old.activePresetId ? { ...p, filters: { ...p.filters, trail: !p.filters.trail } } : p,
       ),
     }));
   };
@@ -140,20 +130,20 @@ export function FilterPanel({ set }: { set: AnnotationSet }) {
       {CATEGORY_ORDER.map((c) => {
         const on = f.categories[c];
         return (
-          <button key={c} className={`frow${on ? "" : " off"}`} onClick={() => toggleCategory(c)}>
+          <button
+            key={c}
+            className={`frow${on ? "" : " off"}`}
+            onClick={() => toggleCategory(c)}
+            title={CATEGORY_NAMES[c]}
+          >
             <img src={iconUrl(CATEGORY_ICON[c])} alt="" />
             <span>{CATEGORY_NAMES[c]}</span>
             <span className="n">{countOf(c)}</span>
-            <Switch on={on} />
           </button>
         );
       })}
       <div className="sep" />
-      <button className="frow" onClick={() => toggleFlag("onlyCurrentTask")}>
-        <span>仅当前任务</span>
-        <Switch on={f.onlyCurrentTask} />
-      </button>
-      <button className="frow" onClick={() => toggleFlag("trail")}>
+      <button className="frow" onClick={toggleTrail}>
         <span>轨迹</span>
         <Switch on={f.trail} />
       </button>
