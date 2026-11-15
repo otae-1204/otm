@@ -2,8 +2,8 @@
 
 只用于设计阶段验证思路，不是产品代码。
 数据来自上游的静态文件 https://json.tarkov.dev/regular/{tasks,tasks_zh,traders,traders_zh,maps_zh}
-用法: python3 task_route.py [数据目录] [输出 js 路径]
-进度目前是模拟的（真实进度要从游戏日志回读）。
+用法: python3 task_route.py [数据目录] [输出 js 路径] [进度 json] [模式]
+不给进度时用模拟的进度；给了就用 log_progress.py 从游戏日志还原出来的真实进度。
 """
 import collections
 import functools
@@ -222,14 +222,19 @@ def layout(done, active, goal_need, grid_rows=4):
 
 
 if __name__ == "__main__":
-    done, active = simulate_progress()
+    if len(sys.argv) > 4:
+        # 真实进度：log_progress.py 的输出，取指定模式
+        prog = json.loads(Path(sys.argv[3]).read_text())[sys.argv[4]]
+        done, active = set(prog["done"]) & set(tasks), set(prog["active"]) & set(tasks)
+    else:
+        done, active = simulate_progress()
     player, tl = infer_levels(done, active)
     kappa = [k for k, t in tasks.items() if t["kappaRequired"]]
     collector = next(k for k in kappa if tasks[k]["normalizedName"] == "collector")
     need = goal_closure(kappa)
 
     print(f"任务总数 {len(tasks)}，有前置任务的 {sum(1 for v in pre.values() if v)}")
-    print(f"模拟进度：已完成 {len(done)}，进行中 {len(active)}")
+    print(f"进度：已完成 {len(done)}，进行中 {len(active)}")
     print(f"反推等级下限：角色 ≥ {player}，商人 {tl}")
     print(f"目标 Kappa：涉及 {len(need)} 个任务，还差 {len(need - done)} 个")
     raids, left = plan(kappa, done, active)
