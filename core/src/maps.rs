@@ -28,6 +28,24 @@ const PRESET_TO_LOCATION: &[(&str, &str)] = &[
     //   scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset
     //   TRACE-NetworkGameCreate ... Location: bigmap ...
     ("bigmap", "bigmap"),
+    // 以下各条来自 2026-11-15 对一台真实机器上最近 700 次启动的 application 日志的统计：
+    // 同一局里 "scene preset path ... rcid:<预设名>" 与随后的 "Location: <地点名>" 配成对，
+    // 括号里是这一对出现的次数。
+    ("shoreline", "Shoreline"),               // 156
+    ("woods", "Woods"),                       // 141
+    ("city", "TarkovStreets"),                // 85
+    ("factory_day", "factory4_day"),          // 84
+    ("rezerv_base", "RezervBase"),            // 82
+    ("lighthouse", "Lighthouse"),             // 52
+    ("laboratory", "laboratory"),             // 46
+    ("sandbox_high", "Sandbox_high"),         // 35
+    ("factory_night", "factory4_night"),      // 33
+    ("icebreaker", "Icebreaker"),             // 25
+    ("labyrinth", "Labyrinth"),               // 25
+    ("laboratory_dark", "laboratory_dark"),   // 16
+    ("sandbox", "Sandbox"),                   // 12
+    ("factory_event", "factory_event"),       // 5
+    ("laboratory_event", "laboratory_event"), // 1
 ];
 
 /// 把场景预设名换成地点名。查不到时原样返回（去掉首尾空白）。
