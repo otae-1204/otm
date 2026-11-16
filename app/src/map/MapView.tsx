@@ -120,7 +120,7 @@ export function MapView(props: MapViewProps) {
           {
             "--otm-tile-brightness": tileBrightness,
             // 楼层瓦片比底图亮一点，选中的那一层才跳出来
-            "--otm-level-brightness": Math.min(1, tileBrightness + 0.12),
+            "--otm-level-brightness": tileBrightness + 0.12,
           } as CSSProperties
         }
       />

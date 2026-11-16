@@ -63,7 +63,7 @@ export interface MapController {
 const BASE_CSS = `
 .map { background: #14171c; }
 .map .leaflet-overlay-pane svg { max-width: none; max-height: none; }
-.map .otm-base-tile { filter: brightness(var(--otm-tile-brightness, .8)) saturate(.55) contrast(1.08); }
+.map .otm-base-tile { filter: brightness(var(--otm-tile-brightness, .8)) saturate(.8) contrast(1.05); }
 .map .otm-level-tile { filter: brightness(var(--otm-level-brightness, .92)) saturate(.75); }
 
 .otm-svg-base .land { fill: #1b2027; }

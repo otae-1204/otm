@@ -121,8 +121,8 @@ function defaultPrefs(): Prefs {
 
 /** 实景亮度：1 是原图，再亮就没意义了；太暗看不清地图。 */
 export const MIN_TILE_BRIGHTNESS = 0.3;
-export const MAX_TILE_BRIGHTNESS = 1;
-export const DEFAULT_TILE_BRIGHTNESS = 0.9;
+export const MAX_TILE_BRIGHTNESS = 2;
+export const DEFAULT_TILE_BRIGHTNESS = 1.4;
 
 export function clampBrightness(v: number) {
   return Math.min(MAX_TILE_BRIGHTNESS, Math.max(MIN_TILE_BRIGHTNESS, Math.round(v * 100) / 100));
