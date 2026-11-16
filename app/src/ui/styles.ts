@@ -19,6 +19,9 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .app { position: fixed; inset: 0; }
 /* 地图自己成一个层叠上下文，否则 Leaflet 的 pane（z-index 400+）会盖住界面 */
 .map { position: absolute; inset: 0; z-index: 0; isolation: isolate; }
+/* 出错时的占位：只有一个小重试按钮，不写说明 */
+.crash { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); }
+.crash.full { position: fixed; }
 
 /* 地图上的标注 */
 .otm-anno img { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.7)); }

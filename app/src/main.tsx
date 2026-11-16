@@ -6,6 +6,7 @@ const styleEl = document.createElement("style");
 styleEl.textContent = CSS;
 document.head.appendChild(styleEl);
 import { App } from "./App";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { dataStore } from "./data/loader";
 import { mockHandle, mockSource } from "./events/mock";
 import { isTauri, tauriSource, type EventSource } from "./events/source";
@@ -30,6 +31,8 @@ source.start((ev) => store.apply(ev));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary className="full">
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

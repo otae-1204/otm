@@ -1,14 +1,12 @@
 // 把事件来源、上游数据、地图实例接到一起的胶水层。
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type L from "leaflet";
 import type { Annotation, AnnotationSet } from "../data/annotations";
 import { buildAnnotations, layerOfPoint } from "../data/annotations";
 import { dataStore, type DataBundle, type Translations, type UpstreamMap } from "../data/loader";
 import { findMapMeta, upstreamMapOf, type MapMeta } from "../data/mapsMeta";
-import { createAnnotationLayer, type AnnotationLayer, type ClusterHover } from "./annotationsLayer";
+import type { ClusterHover } from "./annotationsLayer";
 import { createMapController, type MapController } from "./leafletMap";
-import { createOutlineLayer, createPlayerLayer, type OutlineLayer, type PlayerLayer } from "./playerLayer";
 import { effectiveFilters, subVisible, type Prefs } from "../prefs";
 import type { AppState } from "../state";
 
@@ -71,25 +69,18 @@ export function filterAnnotations(
   return out;
 }
 
-export interface MapLayers {
+export interface MapHandle {
+  /**
+   * 地图控制器。换图、换底图都在它内部处理，这个对象本身不会变；
+   * 当前的地图实例和图层要从它上面取（controller.map / annotations …），
+   * 不要存下来——换图后旧的就被销毁了。
+   */
   controller: MapController | null;
-  /** 这一版地图实例；换图后是新的对象，旧的可能已经被销毁。 */
-  map: L.Map | null;
-  annotations: AnnotationLayer | null;
-  outlines: OutlineLayer | null;
-  player: PlayerLayer | null;
-  /** 地图实例的序号，换图后变化。 */
+  /** 地图实例的序号，换图后变化，用来触发重画。 */
   version: number;
 }
 
-const NO_LAYERS: MapLayers = {
-  controller: null,
-  map: null,
-  annotations: null,
-  outlines: null,
-  player: null,
-  version: 0,
-};
+const NO_MAP: MapHandle = { controller: null, version: 0 };
 
 export interface LeafletOptions {
   container: HTMLDivElement | null;
@@ -103,18 +94,20 @@ export interface LeafletOptions {
 }
 
 /**
- * 在容器里建一张 Leaflet 地图。换图或换底图样式时整个重建 Leaflet 实例，
- * 标注层、外框层、自己位置层都挂在新实例上。
+ * 在容器里建一张 Leaflet 地图。控制器只跟容器绑定，换图时由它自己重建实例；
+ * 换底图样式只换底图图层，实例和视野都留着。
  */
-export function useLeaflet(opts: LeafletOptions): MapLayers {
+export function useLeaflet(opts: LeafletOptions): MapHandle {
   const { container, meta, style, zh } = opts;
-  const [layers, setLayers] = useState<MapLayers>(NO_LAYERS);
+  const [handle, setHandle] = useState<MapHandle>(NO_MAP);
   const pickRef = useRef(opts.onPick);
   pickRef.current = opts.onPick;
   const hoverRef = useRef(opts.onHover);
   hoverRef.current = opts.onHover;
   const metaRef = useRef<MapMeta | null>(meta);
   metaRef.current = meta;
+  const styleRef = useRef(style);
+  styleRef.current = style;
   const zhRef = useRef<Translations | null>(zh);
   zhRef.current = zh;
   // 数据刷新会换掉 meta 的对象，但同一张图不用重建
@@ -122,36 +115,34 @@ export function useLeaflet(opts: LeafletOptions): MapLayers {
 
   useEffect(() => {
     if (!container) return;
-    const controller = createMapController(container, () => {});
-    controller.setMap(metaRef.current, style, zhRef.current);
-    const map = controller.map;
-    if (!map) {
-      setLayers({ ...NO_LAYERS, controller, version: controller.mapVersion() });
-      return () => {
-        controller.destroy();
-        setLayers(NO_LAYERS);
-      };
-    }
-    // 点空白处收起卡片
-    map.on("click", () => pickRef.current(null));
-    const annotations = createAnnotationLayer(
-      map,
-      (a) => pickRef.current(a),
-      (h) => hoverRef.current(h),
-    );
-    const outlines = createOutlineLayer(map);
-    const player = createPlayerLayer(map);
-    setLayers({ controller, map, annotations, outlines, player, version: controller.mapVersion() });
+    const controller = createMapController(container, {
+      onPick: (a) => pickRef.current(a),
+      onHover: (h) => hoverRef.current(h),
+    });
+    setHandle({ controller, version: controller.mapVersion() });
     return () => {
       controller.destroy();
-      setLayers(NO_LAYERS);
+      setHandle(NO_MAP);
     };
-  }, [container, metaKey, style]);
+  }, [container]);
+
+  // 换图：重建地图实例，版本号跟着变
+  useEffect(() => {
+    const controller = handle.controller;
+    if (!controller) return;
+    controller.setMap(metaRef.current, styleRef.current, zhRef.current);
+    setHandle((h) => (h.controller === controller ? { controller, version: controller.mapVersion() } : h));
+  }, [handle.controller, metaKey]);
+
+  // 换底图样式：只换底图图层
+  useEffect(() => {
+    handle.controller?.setBaseStyle(styleRef.current);
+  }, [handle.controller, style]);
 
   // 翻译晚到的时候补画地名，不重建地图（重建会丢视野）
   useEffect(() => {
-    layers.controller?.setLabels(zh);
-  }, [layers.controller, layers.version, zh]);
+    handle.controller?.setLabels(zh);
+  }, [handle.controller, handle.version, zh]);
 
-  return layers;
+  return handle;
 }

@@ -1,27 +1,18 @@
 // 主界面。
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { layerName, layerOfPoint } from "./data/annotations";
 import type { MapMeta } from "./data/mapsMeta";
-import type { Annotation } from "./data/annotations";
 import { canonicalGameMap, mapChoices, mapName } from "./data/mapsMeta";
 import { effectiveFilters, prefsStore, usePrefs } from "./prefs";
 import { useAppState } from "./state";
-import {
-  filterAnnotations,
-  useAnnotations,
-  useData,
-  useLeaflet,
-  useMapResolution,
-} from "./map/useMapData";
-import { AnnotationCard } from "./ui/AnnotationCard";
-import { ClusterCard } from "./ui/ClusterCard";
-import type { ClusterHover } from "./map/annotationsLayer";
+import { filterAnnotations, useAnnotations, useData, useMapResolution } from "./map/useMapData";
+import { MapView } from "./map/MapView";
+import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { FilterPanel, PresetChips } from "./ui/FilterPanel";
 import { SettingsSheet } from "./ui/SettingsSheet";
 import { StatusBar } from "./ui/StatusBar";
 import { IconRestart, IconSettings } from "./ui/icons";
-import { mmss } from "./util";
 import { mockHandle } from "./events/mock";
 
 /**
@@ -45,9 +36,6 @@ export function App() {
   const { gameMap, playerMap, meta, upstream } = useMapResolution(state, prefs, data);
   const set = useAnnotations(data, upstream);
 
-  const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [picked, setPicked] = useState<{ a: Annotation; x: number; y: number } | null>(null);
-  const [hover, setHover] = useState<ClusterHover | null>(null);
   const [settings, setSettings] = useState(false);
   const [manualLayer, setManualLayer] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -77,93 +65,25 @@ export function App() {
     if (prev >= 0 && autoLayer >= 0 && prev !== autoLayer) setManualLayer(null);
   }, [autoLayer]);
 
-  // 换图后回到自动楼层，并收起卡片
+  // 换图后回到自动楼层
   useEffect(() => {
     setManualLayer(null);
-    setPicked(null);
     lastAuto.current = -1;
   }, [meta?.key]);
 
   const layer = manualLayer ?? autoLayer;
   const floors = useMemo(() => floorEntries(meta), [meta]);
 
-  const onPick = useCallback((a: Annotation | null) => {
-    setPicked((prev) => (a === null || prev?.a.key === a.key ? null : { a, x: 0, y: 0 }));
-  }, []);
-  const onHover = useCallback((h: ClusterHover | null) => setHover(h), []);
-
-  const layers = useLeaflet({
-    container,
-    meta,
-    style: prefs.baseStyle,
-    zh: data.zh,
-    onPick,
-    onHover,
-  });
-
-  // 卡片位置跟着地图走
-  useEffect(() => {
-    const map = layers.map;
-    if (!map || !picked) return;
-    const update = () => {
-      const p = map.latLngToContainerPoint([picked.a.z, picked.a.x]);
-      setPicked((prev) => (prev ? { ...prev, x: p.x, y: p.y } : prev));
-    };
-    update();
-    map.on("move zoom", update);
-    return () => {
-      map.off("move zoom", update);
-    };
-  }, [layers.map, layers.version, picked?.a.key]);
-
-  // 楼层
-  useEffect(() => {
-    layers.controller?.setLayer(layer);
-  }, [layers.controller, layers.version, layer, meta?.key]);
-
   // 标注与外框
   const visible = useMemo(
     () => filterAnnotations(set, prefs, meta, layer),
     [set, prefs, meta, layer],
   );
-  useEffect(() => {
-    const map = layers.map;
-    if (!map || !layers.annotations) return;
-    const draw = () => {
-      setHover(null);
-      layers.annotations?.render(
-        visible,
-        map.getZoom(),
-        layers.controller?.fitZoom() ?? map.getZoom(),
-        prefs.clusterIcon,
-      );
-    };
-    draw();
-    layers.outlines?.render(visible);
-    map.on("zoomend", draw);
-    map.on("moveend", draw);
-    return () => {
-      map.off("zoomend", draw);
-      map.off("moveend", draw);
-    };
-  }, [layers.map, layers.annotations, layers.outlines, layers.version, visible, prefs.clusterIcon]);
 
   // 自己与轨迹
   const trailOn = effectiveFilters(prefs).trail;
   const ageSeconds = viewPosition ? Math.max(0, (now - Date.parse(viewPosition.time)) / 1000) : null;
   const stale = !!viewPosition && ageSeconds !== null && ageSeconds >= prefs.staleSeconds;
-  useEffect(() => {
-    if (!layers.player) return;
-    layers.player.update(
-      meta,
-      viewPosition,
-      viewTrail,
-      trailOn,
-      stale ? "stale" : "normal",
-      stale && ageSeconds !== null ? mmss(ageSeconds) : null,
-    );
-    // ageSeconds 每秒变一次，过时的计时才会跟着跳
-  }, [layers.player, layers.version, meta, viewPosition, viewTrail, trailOn, stale, ageSeconds]);
 
   const hasSvg = !!meta?.svgPath;
   const hasTile = !!meta?.tilePath;
@@ -175,7 +95,21 @@ export function App() {
 
   return (
     <div className="app">
-      <div className="map" ref={setContainer} />
+      <ErrorBoundary>
+        <MapView
+          meta={meta}
+          style={style}
+          zh={data.zh}
+          layer={layer}
+          visible={visible}
+          clusterIcon={prefs.clusterIcon}
+          position={viewPosition}
+          trail={viewTrail}
+          trailOn={trailOn}
+          stale={stale}
+          ageSeconds={ageSeconds}
+        />
+      </ErrorBoundary>
       <PresetChips />
       <FilterPanel set={set} />
       <div className="tools">
@@ -236,16 +170,6 @@ export function App() {
         manualMap={prefs.manualMap}
         onPickMap={(g) => prefsStore.update((p) => ({ ...p, manualMap: g }))}
       />
-      {picked ? (
-        <AnnotationCard
-          a={picked.a}
-          pos={viewPosition}
-          x={picked.x}
-          y={picked.y}
-          onClose={() => setPicked(null)}
-        />
-      ) : null}
-      {hover ? <ClusterCard hover={hover} /> : null}
       {settings ? <SettingsSheet set={set} data={data} mock={mockHandle.current !== null} onClose={() => setSettings(false)} /> : null}
     </div>
   );
