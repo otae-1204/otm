@@ -2,7 +2,10 @@
 // 子类清单（容器类型、出生点阵营、撤离点阵营、危险区类型）全部取自上游数据，不写死。
 
 import type { Translations, UpstreamMap, UpstreamMaps } from "./loader";
-import type { MapLayer, MapMeta } from "./mapsMeta";
+import type { MapMeta } from "./mapsMeta";
+import type { GamePoint } from "./floors";
+
+export type { GamePoint };
 
 export type CategoryId =
   | "extract"
@@ -13,12 +16,6 @@ export type CategoryId =
   | "spawn"
   | "switch"
   | "gun";
-
-export interface GamePoint {
-  x: number;
-  y: number;
-  z: number;
-}
 
 export interface Annotation {
   /** 稳定 id，用于 React key。 */
@@ -387,33 +384,6 @@ export function containerName(
   const meta = upstream?.lootContainers?.[id];
   if (!meta) return id;
   return zh?.[meta.name] ?? CONTAINER_ZH[meta.normalizedName] ?? meta.normalizedName;
-}
-
-/** 标注落在哪一层：先看高度落在哪个 extent，再看区域框。返回 -1 表示不属于任何一层。 */
-export function layerOfPoint(
-  layers: MapLayer[] | undefined,
-  p: GamePoint,
-  top?: number,
-  bottom?: number,
-): number {
-  if (!layers || layers.length === 0) return -1;
-  const t = top ?? p.y;
-  const b = bottom ?? p.y;
-  for (let i = 0; i < layers.length; i++) {
-    for (const ext of layers[i].extents ?? []) {
-      // 与上游 markerIsOnLayer 一致：整体落在高度范围内，再看是否落在某个区域框里
-      if (!(t >= ext.height[0] && b < ext.height[1])) continue;
-      if (!ext.bounds || ext.bounds.length === 0) return i;
-      for (const bd of ext.bounds) {
-        const x0 = Math.min(bd[0][0], bd[1][0]);
-        const x1 = Math.max(bd[0][0], bd[1][0]);
-        const z0 = Math.min(bd[0][1], bd[1][1]);
-        const z1 = Math.max(bd[0][1], bd[1][1]);
-        if (p.x >= x0 && p.x <= x1 && p.z >= z0 && p.z <= z1) return i;
-      }
-    }
-  }
-  return -1;
 }
 
 /** 楼层显示名。 */

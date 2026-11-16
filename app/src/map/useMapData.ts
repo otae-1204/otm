@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation, AnnotationSet } from "../data/annotations";
-import { buildAnnotations, layerOfPoint } from "../data/annotations";
+import { buildAnnotations } from "../data/annotations";
+import { onLayer } from "../data/floors";
 import { dataStore, type DataBundle, type Translations, type UpstreamMap } from "../data/loader";
 import { findMapMeta, upstreamMapOf, type MapMeta } from "../data/mapsMeta";
 import type { ClusterHover } from "./annotationsLayer";
@@ -47,7 +48,8 @@ export function useAnnotations(data: DataBundle, map: UpstreamMap | null): Annot
 
 /**
  * 按筛选和楼层过滤后的标注。
- * 属于别的楼层的标注藏起来；不属于任何楼层的（地面上的东西）一直显示。
+ * 选中哪一层就只留哪一层的标注：地面（-1）只留不属于任何一层的，
+ * 楼层只留归属这一层的，别的层一个都不出现。
  */
 export function filterAnnotations(
   set: AnnotationSet,
@@ -56,14 +58,10 @@ export function filterAnnotations(
   layer: number,
 ): Annotation[] {
   const f = effectiveFilters(prefs);
-  const layers = meta?.layers;
   const out: Annotation[] = [];
   for (const a of set.items) {
     if (!subVisible(f, a.category, a.sub)) continue;
-    if (layers && layers.length > 0 && layer >= 0) {
-      const l = layerOfPoint(layers, a, a.top, a.bottom);
-      if (l !== -1 && l !== layer) continue;
-    }
+    if (!onLayer(meta, layer, a, a.top, a.bottom)) continue;
     out.push(a);
   }
   return out;

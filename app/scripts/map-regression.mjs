@@ -148,6 +148,31 @@ async function check(page, name, style, extra = "") {
   return s;
 }
 
+/** 上游缺瓦片的地方（地图外沿那一列）要垫上底色并裁到图幅边缘，不能露出页面底色。 */
+async function checkGapFill(page) {
+  const sel = ".map .leaflet-tile-pane .otm-base-tile img.leaflet-tile";
+  let seen = true;
+  try {
+    await page.waitForFunction(
+      (q) => Array.from(document.querySelectorAll(q)).some((t) => t.style.backgroundColor),
+      sel,
+      { timeout: 15000 },
+    );
+  } catch {
+    seen = false;
+  }
+  const s = await page.evaluate((q) => {
+    const tiles = Array.from(document.querySelectorAll(q));
+    const filled = tiles.filter((t) => t.style.backgroundColor);
+    return {
+      filled: filled.length,
+      clipped: filled.filter((t) => !!t.style.clipPath && t.style.clipPath !== "none").length,
+      color: filled[0] ? getComputedStyle(filled[0]).backgroundColor : null,
+    };
+  }, sel);
+  record("缺瓦片处垫底色", seen && s.filled > 0 && s.clipped === s.filled, `垫了 ${s.filled} 张、裁边 ${s.clipped} 张 ${s.color ?? ""}`);
+}
+
 async function clickSeg(page, label) {
   await page.locator(".seg span", { hasText: new RegExp(`^${label}$`) }).first().click();
 }
@@ -209,6 +234,7 @@ try {
   };
 
   await trip("tile");
+  await checkGapFill(page);
   await trip("svg");
 
   await trip("tile");

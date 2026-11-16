@@ -56,12 +56,15 @@ export interface MapController {
   destroy(): void;
 }
 
-/** 底图压暗：矢量底图按 otm 的配色重新上色，栅格底图整体压暗（DESIGN 6.1）。 */
+/**
+ * 底图配色：矢量底图按 otm 的配色重新上色；栅格底图压暗一点让标注跳出来（DESIGN 6.1），
+ * 压多少由设置里的「实景亮度」决定，MapView 把值写进 --otm-tile-brightness。
+ */
 const BASE_CSS = `
 .map { background: #14171c; }
 .map .leaflet-overlay-pane svg { max-width: none; max-height: none; }
-.map .otm-base-tile { filter: brightness(.42) saturate(.55) contrast(1.08); }
-.map .otm-level-tile { filter: brightness(.85) saturate(.75); }
+.map .otm-base-tile { filter: brightness(var(--otm-tile-brightness, .8)) saturate(.55) contrast(1.08); }
+.map .otm-level-tile { filter: brightness(var(--otm-level-brightness, .92)) saturate(.75); }
 
 .otm-svg-base .land { fill: #1b2027; }
 .otm-svg-base .water { fill: #17303f; }
@@ -105,6 +108,43 @@ function injectCss() {
   const style = document.createElement("style");
   style.textContent = BASE_CSS;
   document.head.appendChild(style);
+}
+
+/**
+ * 实景底图缺瓦片的地方：用和地图一致的底色补上，只补图幅里面那一块。
+ *
+ * 上游的瓦片在整张图的外沿缺几列（服务器上就没有，tarkov.dev 自己的地图页也是空的），
+ * 缺的地方露出的是页面底色，看着像一块虚空。补一层接近实景图边缘的深色之后，
+ * 地图边缘还是地图，而不是一个洞。
+ *
+ * 为什么不用矢量底图垫：矢量图的地物只画到图幅中间，外沿那几十列大部分是透明的
+ * （实测海关 SVG 最右 60 列只有 36% 的行有内容），垫上去和没垫一样。
+ */
+const BLANK_TILE = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+function paintGapTile(el: HTMLImageElement, coords: L.Coords, m: MapMeta, target: L.Map) {
+  const ts = m.tileSize ?? 256;
+  const b = L.latLngBounds(latLngBoundsOf(m.bounds) as L.LatLngExpression[]);
+  // 这个 CRS 的 x 轴是反的（游戏坐标往东、像素往左），两个角取 min/max 才是图的位置
+  const a = target.project(b.getNorthWest(), coords.z);
+  const c = target.project(b.getSouthEast(), coords.z);
+  const left = Math.min(a.x, c.x);
+  const top = Math.min(a.y, c.y);
+  const right = left + Math.abs(c.x - a.x);
+  const bottom = top + Math.abs(c.y - a.y);
+  const x0 = coords.x * ts;
+  const y0 = coords.y * ts;
+  const ix0 = Math.max(x0, left);
+  const iy0 = Math.max(y0, top);
+  const ix1 = Math.min(x0 + ts, right);
+  const iy1 = Math.min(y0 + ts, bottom);
+  // 瓦片往往有一半在图幅外面：只补里面那一块，外面留空，地图边缘才不会多出一圈色带
+  if (ix1 <= ix0 || iy1 <= iy0) return;
+  el.style.backgroundColor = "#2b2e20";
+  el.style.clipPath = `inset(${iy0 - y0}px ${x0 + ts - ix1}px ${y0 + ts - iy1}px ${ix0 - x0}px)`;
+  el.style.visibility = "visible";
+  // 瓦片本身是 404，留着会画个破图图标；换成 1 像素的透明图，只留底色
+  el.src = BLANK_TILE;
 }
 
 interface Runtime {
@@ -261,8 +301,8 @@ export function createMapController(container: HTMLElement, hooks: MapHooks): Ma
     return !!m.svgPath && (style === "svg" || !m.tilePath);
   }
 
-  function addBaseTile(m: MapMeta, target: L.Map) {
-    return L.tileLayer(m.tilePath!, {
+  function addBaseTile(m: MapMeta, target: L.Map, onGap?: (el: HTMLImageElement, coords: L.Coords) => void) {
+    const layer = L.tileLayer(m.tilePath!, {
       tileSize: m.tileSize ?? 256,
       minZoom: m.minZoom ?? 0,
       maxZoom: m.maxZoom ?? 6,
@@ -270,6 +310,12 @@ export function createMapController(container: HTMLElement, hooks: MapHooks): Ma
       bounds: latLngBoundsOf(m.bounds),
       className: "otm-base-tile",
     }).addTo(target);
+    if (onGap) {
+      layer.on("tileerror", (e: L.TileErrorEvent) => {
+        if (e.tile) onGap(e.tile as HTMLImageElement, e.coords);
+      });
+    }
+    return layer;
   }
 
   /** 换底图：撤掉旧的，按样式挂上新的。地图实例、视野和其它图层都不动。 */
@@ -301,7 +347,8 @@ export function createMapController(container: HTMLElement, hooks: MapHooks): Ma
         applyLayer();
       });
     } else if (m.tilePath) {
-      rt.baseTile = addBaseTile(m, target);
+      // 缺的瓦片直接补底色，不用等别的东西
+      rt.baseTile = addBaseTile(m, target, (el, coords) => paintGapTile(el, coords, m, target));
     }
     applyLayer();
   }

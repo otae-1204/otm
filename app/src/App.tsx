@@ -1,7 +1,8 @@
 // 主界面。
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { layerName, layerOfPoint } from "./data/annotations";
+import { layerName } from "./data/annotations";
+import { layerOfPoint } from "./data/floors";
 import type { MapMeta } from "./data/mapsMeta";
 import { canonicalGameMap, mapChoices, mapName } from "./data/mapsMeta";
 import { effectiveFilters, prefsStore, usePrefs } from "./prefs";
@@ -103,6 +104,7 @@ export function App() {
           layer={layer}
           visible={visible}
           clusterIcon={prefs.clusterIcon}
+          tileBrightness={prefs.tileBrightness}
           position={viewPosition}
           trail={viewTrail}
           trailOn={trailOn}

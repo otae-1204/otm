@@ -7,7 +7,10 @@ import type { DataBundle } from "../data/loader";
 import { dataStore } from "../data/loader";
 import {
   activePreset,
+  clampBrightness,
   CLUSTER_ICON_MODES,
+  MAX_TILE_BRIGHTNESS,
+  MIN_TILE_BRIGHTNESS,
   newPresetId,
   prefsStore,
   subKey,
@@ -209,7 +212,7 @@ function PresetEditor({ set }: { set: AnnotationSet }) {
   );
 }
 
-/** 显示：合并标注里放哪个图标。 */
+/** 显示：合并标注的图标、实景底图的亮度。 */
 function DisplayPanel() {
   const prefs = usePrefs();
   return (
@@ -225,6 +228,22 @@ function DisplayPanel() {
             {m.label}
           </span>
         ))}
+      </div>
+      <div className="row" style={{ marginTop: 18 }}>
+        实景亮度
+        <span className="r">
+          <input
+            type="range"
+            min={MIN_TILE_BRIGHTNESS}
+            max={MAX_TILE_BRIGHTNESS}
+            step={0.05}
+            value={prefs.tileBrightness}
+            onChange={(e) =>
+              prefsStore.update((p) => ({ ...p, tileBrightness: clampBrightness(Number(e.target.value)) }))
+            }
+          />
+          <span className="val">{Math.round(prefs.tileBrightness * 100)}%</span>
+        </span>
       </div>
     </>
   );

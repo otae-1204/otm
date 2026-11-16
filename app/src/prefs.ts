@@ -44,6 +44,8 @@ export interface Prefs {
   /** 手动指定的地图（游戏内部名）；null 表示跟着对局走。 */
   manualMap: string | null;
   baseStyle: "svg" | "tile";
+  /** 实景底图的亮度（1 = 原图）。 */
+  tileBrightness: number;
   /** 多久算位置过时（秒）。 */
   staleSeconds: number;
   /** 假数据回放倍速。 */
@@ -110,10 +112,20 @@ function defaultPrefs(): Prefs {
     overrides: {},
     manualMap: null,
     baseStyle: "svg",
+    tileBrightness: DEFAULT_TILE_BRIGHTNESS,
     staleSeconds: 60,
     mockSpeed: 1,
     clusterIcon: "count",
   };
+}
+
+/** 实景亮度：1 是原图，再亮就没意义了；太暗看不清地图。 */
+export const MIN_TILE_BRIGHTNESS = 0.3;
+export const MAX_TILE_BRIGHTNESS = 1;
+export const DEFAULT_TILE_BRIGHTNESS = 0.9;
+
+export function clampBrightness(v: number) {
+  return Math.min(MAX_TILE_BRIGHTNESS, Math.max(MIN_TILE_BRIGHTNESS, Math.round(v * 100) / 100));
 }
 
 const KEY = "otm.prefs";
@@ -185,6 +197,10 @@ function load(): Prefs {
     overrides: oldVersion < 2 ? {} : (stored.overrides ?? {}),
     manualMap: typeof stored.manualMap === "string" ? stored.manualMap : null,
     baseStyle: stored.baseStyle === "tile" ? "tile" : "svg",
+    tileBrightness:
+      typeof stored.tileBrightness === "number"
+        ? clampBrightness(stored.tileBrightness)
+        : d.tileBrightness,
     staleSeconds:
       typeof stored.staleSeconds === "number" && stored.staleSeconds >= 5
         ? stored.staleSeconds
