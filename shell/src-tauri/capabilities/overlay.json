@@ -1,0 +1,11 @@
+{
+  "identifier": "overlay",
+  "description": "叠加层窗口的权限：核心事件（监听 otm-event、收 otm-overlay / otm-hotkey），以及调整模式里拖动窗口。",
+  "windows": [
+    "mini"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging"
+  ]
+}

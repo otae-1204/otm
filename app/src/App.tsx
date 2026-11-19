@@ -17,6 +17,7 @@ import { StatusBar } from "./ui/StatusBar";
 import { IconRestart, IconSettings } from "./ui/icons";
 import { mockHandle } from "./events/mock";
 import { SeasonSheet } from "./ui/SeasonSheet";
+import { useOverlayHost } from "./overlay/host";
 import { withSeason } from "./data/season/annotations";
 import { countStore, todayFor, useCounts, useSeason } from "./data/season/store";
 
@@ -35,6 +36,8 @@ function floorEntries(meta: MapMeta | null): { index: number; label: string }[] 
 }
 
 export function App() {
+  // 叠加层的开关、大小、热键跟着偏好走（窗口在外壳那边）
+  useOverlayHost();
   const state = useAppState();
   const prefs = usePrefs();
   const data = useData();

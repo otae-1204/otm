@@ -3,7 +3,9 @@
 //! 界面（`app/`）在 Tauri 里通过 `window.__TAURI__` 认出自己跑在外壳里，
 //! 监听 `otm-event`、启动时 `invoke("get_state")` 取快照，见 `app/src/events/source.ts`。
 //!
-//! 红线：只读游戏截图的文件名和游戏日志，不碰游戏进程。
+//! 叠加层的第二窗口（小地图、展开大地图）和全局热键在 `overlay.rs`。
+//!
+//! 红线：只读游戏截图的文件名和游戏日志，不碰游戏进程；全局热键只收按键，不往游戏里发键。
 
 // 发布版不要带控制台窗口。
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -12,6 +14,8 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
+
+mod overlay;
 
 use otm_core::event::{Snapshot, SnapshotPaths};
 use otm_core::watcher::{WatchOptions, Watcher};
@@ -40,6 +44,8 @@ fn main() {
     tauri::Builder::default()
         // 界面里"用系统浏览器打开链接"走 plugin:opener|open_url，权限见 capabilities/default.json
         .plugin(tauri_plugin_opener::init())
+        // 叠加层的全局热键；注册、注销都在 overlay.rs 里，界面只交键位
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let watcher = Watcher::start(WatchOptions::default());
             let (game_dir_tx, game_dir_rx) = mpsc::channel();
@@ -47,6 +53,12 @@ fn main() {
                 snapshot: Mutex::new(empty_snapshot()),
                 game_dir: Mutex::new(game_dir_tx),
             });
+            // 叠加层的位置大小记在配置目录；拿不到目录就退回临时目录，照样能用
+            let dir = app
+                .path()
+                .app_config_dir()
+                .unwrap_or_else(|_| std::env::temp_dir().join("otm"));
+            app.manage(overlay::Overlay::new(dir.join("overlay.json")));
             forward_events(app.handle().clone(), watcher, game_dir_rx);
             show_window_fallback(app.handle().clone());
             Ok(())
@@ -58,9 +70,25 @@ fn main() {
                 let _ = webview.window().show();
             }
         })
-        .invoke_handler(tauri::generate_handler![get_state, set_game_dir])
-        .run(tauri::generate_context!())
-        .expect("otm 起不来");
+        .on_window_event(overlay::on_window_event)
+        .invoke_handler(tauri::generate_handler![
+            get_state,
+            set_game_dir,
+            overlay::overlay_set_enabled,
+            overlay::overlay_set_adjust,
+            overlay::overlay_set_detail,
+            overlay::overlay_set_size,
+            overlay::overlay_set_hotkeys,
+            overlay::overlay_state
+        ])
+        .build(tauri::generate_context!())
+        .expect("otm 起不来")
+        .run(|app, event| {
+            // 退出前把叠加层的位置大小写下来，下次打开还在原地
+            if let tauri::RunEvent::Exit = event {
+                overlay::persist_on_exit(app);
+            }
+        });
 }
 
 /// 页面一直没画完时的兜底：到点把窗口露出来。

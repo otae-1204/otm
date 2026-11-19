@@ -12,7 +12,12 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 # 赛季文件详情里的署名链接要交给系统浏览器；Tauri 的 webview 里 window.open 打不开外部浏览器
 tauri-plugin-opener = "2"
+# 叠加层的全局热键：显示/隐藏、按住展开、预设轮换、详情、调整模式
+tauri-plugin-global-shortcut = "2"
 otm-core = { path = "../../core" }
+# 叠加层的窗口状态和热键结果要交给界面；tauri 自己用同一套版本
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 # 发布版：小一点、快一点。界面在 WebView 里跑，Rust 这边只做监听，优化级别不用拉满。
 [profile.release]

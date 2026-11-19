@@ -236,4 +236,77 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .kv .link:hover { text-decoration: underline; }
 .bad { color: var(--c-danger); }
 .good { color: var(--c-extract); }
+.hold { font-size: 12px; color: var(--muted); margin-left: 4px; }
+.key {
+  min-width: 56px; height: 30px; padding: 0 12px; border-radius: 8px; display: grid; place-items: center;
+  font-size: 13px; color: var(--text); background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1);
+}
+.key:hover { background: rgba(255,255,255,.14); }
+.key.on { background: var(--accent); border-color: var(--accent); color: #14171c; font-weight: 700; }
+/* 注册不上（被别的程序占了）：只标红，不弹窗 */
+.key.bad { color: var(--c-danger); border-color: var(--c-danger); background: rgba(255,93,93,.1); }
+
+/* —— 叠加层：小地图窗口（?view=mini，DESIGN 7.5） —— */
+body.mini-window { background: transparent; }
+body.mini-window #root { background: transparent; }
+.mini-root { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; }
+.mini {
+  position: relative; flex: none; width: 100%; aspect-ratio: 1 / 1; overflow: hidden;
+  border-radius: 18px; border: 1px solid rgba(255,255,255,.14);
+  background: rgba(20,23,28,.5); box-shadow: 0 8px 30px rgba(0,0,0,.45);
+  opacity: var(--mini-opacity, .92);
+}
+.mini.circle { border-radius: 50%; }
+.mini-root.big .mini { position: absolute; inset: 0; aspect-ratio: auto; border-radius: 22px; }
+.mini-mapbox { position: absolute; transform-origin: 50% 50%; }
+/* 转动的容器里那块 Leaflet；外面的 .map 规则已经在，这里只保证铺满 */
+.mini-mapbox > .map { position: absolute; inset: 0; }
+.mini-tag {
+  position: absolute; font-size: 13px; line-height: 1; padding: 3px 8px; border-radius: 9px;
+  background: rgba(0,0,0,.6); color: #e8ecef; white-space: nowrap;
+}
+.mini-tag.bl { left: 10px; bottom: 10px; }
+.mini-tag.br { right: 10px; bottom: 10px; }
+/* 圆形时四个角是空的，字挪到圆里的那块方区（按 17% 收，比内接正方形再靠外一点） */
+.mini.circle .mini-tag.bl { left: 17%; bottom: 17%; }
+.mini.circle .mini-tag.br { right: 17%; bottom: 17%; }
+.mini-root.big .mini-tag { font-size: 15px; padding: 4px 12px; }
+.mini-root.big .mini-tag.bl { left: 16px; bottom: 16px; }
+.mini-root.big .mini-tag.br { right: 16px; bottom: 16px; }
+/* 进图后还没截图：中间一个相机（DESIGN 7.8） */
+.mini-center {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  display: grid; place-items: center; color: var(--accent);
+  filter: drop-shadow(0 0 8px rgba(255,210,74,.45));
+}
+.mini-center svg { fill: none; stroke: currentColor; stroke-width: 1.6; }
+/* 位置过时：自己变黄、去掉视野锥，旁边一个相机 + 计时（和主窗口一样） */
+.mini-stale {
+  position: absolute; left: 50%; top: calc(50% + 22px); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px;
+  background: var(--accent); color: #14171c; font-size: 13px; font-weight: 700;
+  box-shadow: 0 2px 10px rgba(0,0,0,.5);
+}
+.mini-stale svg { fill: none; stroke: currentColor; stroke-width: 2; }
+/* 调整模式：细边框 + 可以拖着走 */
+.mini.adjust { box-shadow: inset 0 0 0 2px rgba(255,210,74,.85); }
+.mini-drag { position: absolute; inset: 0; cursor: move; }
+/* 详情卡片（v2-mini-detail.png）：小地图下面一块，高度跟着内容走（外壳按界面量出来的高度开窗口） */
+.minicard {
+  position: relative; flex: none; height: auto; display: flex; flex-direction: column;
+  border-radius: 16px; overflow: hidden; background: rgba(23,27,33,.94);
+  border: 1px solid rgba(255,255,255,.14); box-shadow: 0 8px 30px rgba(0,0,0,.45);
+}
+.minicard .mcp {
+  flex: none; height: 180px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #2a323c, #20262e);
+}
+.minicard .mcp img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.minicard .mcb { padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+.minicard .mct { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; }
+.minicard .mct img { width: 20px; height: 20px; flex: none; }
+.minicard .mct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.minicard .mct b { margin-left: auto; color: var(--accent); font-weight: 700; flex: none; }
+.minicard .mcd { font-size: 14px; line-height: 1.45; color: #dfe5ec; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.minicard .mcf { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
 `;

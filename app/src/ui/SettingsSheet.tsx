@@ -19,6 +19,7 @@ import {
 } from "../prefs";
 import { mockHandle } from "../events/mock";
 import { seasonStore, useSeason } from "../data/season/store";
+import { HotkeyPanel, OverlayPanel } from "./OverlaySettings";
 import { openExternal } from "./SeasonSheet";
 import { iconUrl } from "../map/icons";
 import { IconCaret } from "./icons";
@@ -35,7 +36,7 @@ const CATEGORY_ICON: Record<CategoryId, string> = {
   season: "season",
 };
 
-type Tab = "presets" | "display" | "locate" | "data";
+type Tab = "presets" | "display" | "overlay" | "hotkeys" | "locate" | "data";
 
 export function SettingsSheet({
   set,
@@ -61,6 +62,12 @@ export function SettingsSheet({
           <button className={`tab${tab === "display" ? " on" : ""}`} onClick={() => setTab("display")}>
             显示
           </button>
+          <button className={`tab${tab === "overlay" ? " on" : ""}`} onClick={() => setTab("overlay")}>
+            叠加层
+          </button>
+          <button className={`tab${tab === "hotkeys" ? " on" : ""}`} onClick={() => setTab("hotkeys")}>
+            热键
+          </button>
           <button className={`tab${tab === "locate" ? " on" : ""}`} onClick={() => setTab("locate")}>
             定位
           </button>
@@ -71,6 +78,8 @@ export function SettingsSheet({
         <div className="sbody">
           {tab === "presets" ? <PresetEditor set={set} /> : null}
           {tab === "display" ? <DisplayPanel /> : null}
+          {tab === "overlay" ? <OverlayPanel /> : null}
+          {tab === "hotkeys" ? <HotkeyPanel /> : null}
           {tab === "locate" ? <LocatePanel /> : null}
           {tab === "data" ? <DataPanel data={data} mock={mock} /> : null}
         </div>

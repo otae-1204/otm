@@ -34,6 +34,76 @@ export const CLUSTER_ICON_MODES: { id: ClusterIconMode; label: string }[] = [
   { id: "category", label: "统一图标" },
 ];
 
+/** 叠加层的热键。空串表示没绑。 */
+export interface Hotkeys {
+  /** 显示 / 隐藏小地图。 */
+  show: string;
+  /** 按住展开大地图，松开收回。 */
+  expand: string;
+  /** 预设轮换（小地图里按）。 */
+  preset: string;
+  /** 详情卡片。 */
+  detail: string;
+  /** 调整模式：关掉鼠标穿透，拖边框改位置大小。 */
+  adjust: string;
+}
+
+/** 设置里热键那一页的五行，顺序就是那里的顺序。 */
+export const HOTKEY_ACTIONS: { id: keyof Hotkeys; label: string; hold: boolean }[] = [
+  { id: "show", label: "显示 / 隐藏", hold: false },
+  { id: "expand", label: "展开", hold: true },
+  { id: "preset", label: "预设轮换", hold: false },
+  { id: "detail", label: "详情卡片", hold: false },
+  { id: "adjust", label: "调整模式", hold: false },
+];
+
+/** 默认键位照 DESIGN 8 节（F6 显示/隐藏、按住 Caps 展开、F5 预设轮换），
+ *  详情和调整模式 DESIGN 没定，先用旁边的 F7 / F8。 */
+export const DEFAULT_HOTKEYS: Hotkeys = {
+  show: "F6",
+  expand: "CapsLock",
+  preset: "F5",
+  detail: "F7",
+  adjust: "F8",
+};
+
+/** 小地图的形状和朝向。 */
+export type OverlayShape = "square" | "circle";
+export type OverlayHeading = "follow" | "north";
+
+/** 叠加层（DESIGN 7.4 的「叠加层」页）。 */
+export interface OverlayPrefs {
+  /** 默认关闭：窗口模式是默认和保底。 */
+  enabled: boolean;
+  shape: OverlayShape;
+  /** 跟随朝向（自己朝上）还是固定朝北。 */
+  heading: OverlayHeading;
+  /** 对局外把窗口藏起来。 */
+  hideOutside: boolean;
+  /** 小地图里横着看到多少米（DESIGN 7.4 的「视野范围」）。 */
+  rangeMeters: number;
+  /** 不透明度。 */
+  opacity: number;
+  /** 正方形边长；调完记在这里，拖边框改大小也会写回来。 */
+  size: number;
+  hotkeys: Hotkeys;
+}
+
+export const OVERLAY_RANGE = { min: 60, max: 400 } as const;
+export const OVERLAY_OPACITY = { min: 0.4, max: 1 } as const;
+export const OVERLAY_SIZE = { min: 160, max: 900 } as const;
+
+export const DEFAULT_OVERLAY: OverlayPrefs = {
+  enabled: false,
+  shape: "square",
+  heading: "follow",
+  hideOutside: true,
+  rangeMeters: 150,
+  opacity: 0.92,
+  size: 320,
+  hotkeys: DEFAULT_HOTKEYS,
+};
+
 export interface Prefs {
   /** 存储格式版本，用来迁移旧数据。 */
   v: number;
@@ -54,6 +124,8 @@ export interface Prefs {
   mockSpeed: number;
   /** 合并标注里放哪个图标。 */
   clusterIcon: ClusterIconMode;
+  /** 叠加层：开关、外观、热键。 */
+  overlay: OverlayPrefs;
 }
 
 export const ALL_CATEGORIES: CategoryId[] = [
@@ -120,6 +192,7 @@ function defaultPrefs(): Prefs {
     staleSeconds: 60,
     mockSpeed: 1,
     clusterIcon: "count",
+    overlay: DEFAULT_OVERLAY,
   };
 }
 
@@ -132,14 +205,16 @@ export function clampBrightness(v: number) {
   return Math.min(MAX_TILE_BRIGHTNESS, Math.max(MIN_TILE_BRIGHTNESS, Math.round(v * 100) / 100));
 }
 
-const KEY = "otm.prefs";
+export const PREFS_KEY = "otm.prefs";
+const KEY = PREFS_KEY;
 /**
  * 存储格式版本：
  * 2：做任务/跑刀的默认开关改过，升级时重置这两个内置预设；
  * 3：加了合并标注的图标选项；
  * 4：加了赛季文件这一大类，内置预设默认打开它。
+ * 5：加了叠加层（开关、外观、热键），默认还是关着。
  */
-const VERSION = 4;
+const VERSION = 5;
 
 /** 把任意存下来的预设整理成当前格式，认不出的字段丢掉。 */
 function normalizePreset(raw: unknown): Preset | null {
@@ -158,14 +233,36 @@ function normalizePreset(raw: unknown): Preset | null {
   };
 }
 
-function load(): Prefs {
+/** 叠加层偏好：认不出的字段退回默认值，版本升级、换进来的数据都走这里。 */
+export function normalizeOverlay(raw: unknown): OverlayPrefs {
+  const d = DEFAULT_OVERLAY;
+  if (!raw || typeof raw !== "object") return d;
+  const o = raw as Partial<OverlayPrefs>;
+  const h = (o.hotkeys ?? {}) as Partial<Hotkeys>;
+  const key = (v: unknown, fallback: string) => (typeof v === "string" ? v : fallback);
+  const num = (v: unknown, fallback: number, lo: number, hi: number) =>
+    typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : fallback;
+  return {
+    enabled: o.enabled === true,
+    shape: o.shape === "circle" ? "circle" : "square",
+    heading: o.heading === "north" ? "north" : "follow",
+    hideOutside: o.hideOutside !== false,
+    rangeMeters: Math.round(num(o.rangeMeters, d.rangeMeters, OVERLAY_RANGE.min, OVERLAY_RANGE.max)),
+    opacity: Math.round(num(o.opacity, d.opacity, OVERLAY_OPACITY.min, OVERLAY_OPACITY.max) * 100) / 100,
+    size: Math.round(num(o.size, d.size, OVERLAY_SIZE.min, OVERLAY_SIZE.max)),
+    hotkeys: {
+      show: key(h.show, d.hotkeys.show),
+      expand: key(h.expand, d.hotkeys.expand),
+      preset: key(h.preset, d.hotkeys.preset),
+      detail: key(h.detail, d.hotkeys.detail),
+      adjust: key(h.adjust, d.hotkeys.adjust),
+    },
+  };
+}
+
+/** 把存下来的一份偏好整理成当前格式。`load` 和两个窗口之间的同步都走这里。 */
+function parseStored(raw: string | null): Prefs {
   const d = defaultPrefs();
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(KEY);
-  } catch {
-    return d;
-  }
   if (!raw) return d;
 
   let stored: Partial<Prefs> | null = null;
@@ -228,8 +325,30 @@ function load(): Prefs {
       stored.clusterIcon === "value" || stored.clusterIcon === "category"
         ? stored.clusterIcon
         : d.clusterIcon,
+    overlay: normalizeOverlay(stored.overlay),
   };
-  if (oldVersion < VERSION) {
+  return result;
+}
+
+/** 存着的那份是哪个版本；读不出来就当最老的。 */
+function storedVersion(raw: string): number {
+  try {
+    const v = (JSON.parse(raw) as { v?: unknown }).v;
+    return typeof v === "number" ? v : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function load(): Prefs {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(KEY);
+  } catch {
+    return defaultPrefs();
+  }
+  const result = parseStored(raw);
+  if (raw && storedVersion(raw) < VERSION) {
     // 迁移结果马上写回去，免得下次启动又按旧数据算一遍
     try {
       localStorage.setItem(KEY, JSON.stringify(result));
@@ -238,6 +357,11 @@ function load(): Prefs {
     }
   }
   return result;
+}
+
+/** 另一个窗口写过来的那份偏好。 */
+export function prefsFromJson(text: string): Prefs {
+  return parseStored(text);
 }
 
 type Listener = () => void;
