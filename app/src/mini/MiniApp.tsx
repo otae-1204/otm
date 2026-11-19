@@ -16,10 +16,13 @@ import { useAppState } from "../state";
 import { markerRotation } from "../map/crs";
 import { filterAnnotations, useAnnotations, useData, useMapResolution } from "../map/useMapData";
 import { mmss } from "../util";
-import { inTauri, listenOverlay, overlayInvoke, useWindowSize, type OverlayWindowState } from "../overlay/bridge";
+import { inTauri, listenOverlay, logToShell, overlayInvoke, useWindowSize, type OverlayWindowState } from "../overlay/bridge";
 import { IconCamera } from "../ui/icons";
 import { MiniCard } from "./MiniCard";
 import { MiniMap } from "./MiniMap";
+
+/** 空框这件事只往日志里写一次（它会一直重画）。 */
+let emptyLogged = false;
 
 /** 外壳发过来的窗口状态；浏览器里没有外壳，得到 null。 */
 function useOverlayWindow(): OverlayWindowState | null {
@@ -27,7 +30,10 @@ function useOverlayWindow(): OverlayWindowState | null {
   useEffect(() => {
     let alive = true;
     void overlayInvoke<OverlayWindowState>("overlay_state").then((s) => {
-      if (alive && s) setState(s);
+      if (!s) return;
+      // 外壳以为的样子 vs Windows 那边真实的样子，两个都记下来（日志里排错用）
+      if (s.dump) logToShell(`叠加层：外壳说 ${s.dump}`);
+      if (alive) setState(s);
     });
     const off = listenOverlay<OverlayWindowState>("otm-overlay", (s) => setState(s));
     return () => {
@@ -91,8 +97,17 @@ export function MiniApp() {
   const stale = !!pos && ageSeconds !== null && ageSeconds >= prefs.staleSeconds;
   /** 进图后还没按过截图：不转，中间一个相机（DESIGN 7.8）。 */
   const waitingShot = inRaid && !pos;
-  /** 对局外：设置里开着「对局外隐藏」就什么都不画（窗口本身是透明的）。 */
-  const hidden = !inRaid && ov.hideOutside;
+  /**
+   * 对局外怎么显示：设置里开着「对局外隐藏」就什么都不画（窗口本身是透明的），
+   * 但刚打开叠加层的这 10 秒、以及调整模式里，一定要让人看见窗口在哪、能拖。
+   */
+  const [justOpened, setJustOpened] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setJustOpened(false), 10_000);
+    return () => clearTimeout(t);
+  }, []);
+  const showOutside = !ov.hideOutside || justOpened || !!win?.adjust;
+  const hidden = !inRaid && !showOutside;
 
   const rot = useMemo(() => {
     if (!meta || ov.heading === "north" || waitingShot || pos?.yaw == null) return 0;
@@ -167,7 +182,31 @@ export function MiniApp() {
   const preset = prefs.presets.find((x) => x.id === prefs.activePresetId) ?? prefs.presets[0] ?? null;
   const floor = meta ? (layer >= 0 && meta.layers?.[layer] ? layerName(meta.layers[layer].name) : "地面") : null;
 
-  if (hidden || !meta) return null;
+  if (hidden) return null;
+  if (!meta) {
+    // 对局中还没认出哪张图：等事件，别闪一下空框
+    if (inRaid) return null;
+    // 对局外又没有上一局：灰底的空框加一个相机，至少看得见窗口在哪、能拖
+    if (!emptyLogged) {
+      emptyLogged = true;
+      logToShell("叠加层：没有上一局，画灰底空框");
+    }
+    return (
+      <div className={`mini-root${expanded ? " big" : ""}`}>
+        <div
+          className={`mini empty${expanded ? " big" : ""}${!expanded && ov.shape === "circle" ? " circle" : ""}${
+            win?.adjust ? " adjust" : ""
+          }`}
+          style={{ "--mini-opacity": ov.opacity } as CSSProperties}
+        >
+          <div className="mini-center">
+            <IconCamera size={expanded ? 56 : 40} />
+          </div>
+          {win?.adjust ? <div className="mini-drag" data-tauri-drag-region /> : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`mini-root${expanded ? " big" : ""}`}>

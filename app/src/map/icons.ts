@@ -19,11 +19,11 @@ export function iconUrl(name: string) {
 const DOC_PATH = "M6.6 2.4h6.9l3.9 3.9v15.3H6.6z";
 const DOC_FOLD = "M13.5 2.4v3.9h3.9";
 
-function docBadge(color: string, size: number): string {
+function docBadge(color: string, size: number, key?: string): string {
   const r = Math.round(size * 0.3);
   const bw = Math.max(1.5, Math.round(size * 0.085));
   return (
-    `<span class="otm-doc" style="--c:${color};width:${size}px;height:${size}px;` +
+    `<span class="otm-doc" data-k="${key ?? ""}" style="--c:${color};width:${size}px;height:${size}px;` +
     `border-radius:${r}px;border-width:${bw}px">` +
     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" ` +
     `stroke-linecap="round" stroke-linejoin="round"><path d="${DOC_PATH}"/><path d="${DOC_FOLD}"/></svg></span>`
@@ -37,7 +37,7 @@ export function annotationIcon(a: Annotation, size = 26): L.DivIcon {
     const s = Math.max(size, 24);
     return L.divIcon({
       className: "otm-anno otm-doc-anno",
-      html: docBadge(a.color ?? "#4da3ff", s),
+      html: docBadge(a.color ?? "#4da3ff", s, a.key),
       iconSize: [s, s],
       iconAnchor: [s / 2, s / 2],
     });

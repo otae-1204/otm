@@ -7,7 +7,7 @@ styleEl.textContent = CSS;
 document.head.appendChild(styleEl);
 import { App } from "./App";
 import { MiniApp } from "./mini/MiniApp";
-import { isMiniView } from "./overlay/bridge";
+import { isMiniView, logToShell, windowLabel } from "./overlay/bridge";
 import { ErrorBoundary } from "./ui/ErrorBoundary";
 import { dataStore } from "./data/loader";
 import { mockHandle, mockSource } from "./events/mock";
@@ -21,7 +21,15 @@ import { prefsStore } from "./prefs";
 // 同一个前端：主窗口是地图界面，叠加层那个窗口是 ?view=mini 的小地图。
 // 叠加层窗口是透明的，页面底色得让开（见 styles.ts 里的 body.mini-window）。
 const mini = isMiniView();
-if (mini) document.body.classList.add("mini-window");
+if (mini) {
+  document.body.classList.add("mini-window");
+  // 实机上没有控制台：叠加层这边出什么错都写进外壳的日志，主审能远程看
+  window.addEventListener("error", (e) => logToShell(`界面错误 ${e.message} @ ${e.filename}:${e.lineno}`));
+  window.addEventListener("unhandledrejection", (e) => logToShell(`未处理的错误 ${String(e.reason)}`));
+  logToShell(
+    `叠加层窗口挂载：label=${windowLabel() ?? "无"} ${location.href} ${window.innerWidth}×${window.innerHeight}`,
+  );
+}
 
 dataStore.start();
 startPrefsSync();

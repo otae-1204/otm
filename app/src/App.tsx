@@ -102,6 +102,15 @@ export function App() {
     setDoc(null);
   }, [season.pack]);
 
+  // 点开的点：抽屉只讲这一个点，包里找不到（换了包）就不显示
+  const seasonDoc = useMemo(() => {
+    const pack = season.pack;
+    if (!pack || !doc) return null;
+    const p = pack.maps.find((m) => m.key === meta?.key)?.points[doc.index];
+    const t = p ? pack.types.find((x) => x.id === p.type) : undefined;
+    return p && t ? { point: p, type: t } : null;
+  }, [season.pack, doc, meta]);
+
   const layer = manualLayer ?? autoLayer;
   const floors = useMemo(() => floorEntries(meta), [meta]);
 
@@ -124,13 +133,32 @@ export function App() {
     [data.maps, data.mapsMeta, data.zh],
   );
 
-  // 状态栏的文件计数点开详情：先说本图，本图不刷就说第一张刷的图
+  // 状态栏的文件计数点开详情：本图离自己最近的那一个；本图不刷就换到第一张刷的图
   const openSeason = () => {
     const pack = season.pack;
     if (!pack) return;
-    const map = (meta ? pack.maps.find((m) => m.key === meta.key) : null) ?? pack.maps[0];
-    const p = map?.points[0];
-    if (p) setDoc({ type: p.type, index: 0 });
+    const here = pack.maps.find((m) => m.key === meta?.key);
+    const pts = here?.points ?? [];
+    if (pts.length > 0) {
+      const pos = onPlayerMap ? state.position : null;
+      let best = 0;
+      if (pos) {
+        let bd = Infinity;
+        pts.forEach((p, i) => {
+          const d = Math.hypot(p.x - pos.x, p.z - pos.z);
+          if (d < bd) {
+            bd = d;
+            best = i;
+          }
+        });
+      }
+      setDoc({ type: pts[best].type, index: best });
+      return;
+    }
+    const first = pack.maps.find((m) => m.points.length > 0);
+    if (!first) return;
+    if (first.key !== meta?.key) pickMapByKey(first.key);
+    setDoc({ type: first.points[0].type, index: 0 });
   };
 
   // 详情里的「刷新地图」按配置 key 切换，换成界面认的游戏内部名
@@ -220,16 +248,13 @@ export function App() {
         onPickMap={pickMap}
         onOpenSeason={openSeason}
       />
-      {season.pack && doc ? (
+      {seasonDoc ? (
         <SeasonSheet
-          pack={season.pack}
-          mapKey={meta?.key ?? null}
-          type={doc.type}
-          index={doc.index}
+          pack={season.pack!}
+          type={seasonDoc.type}
+          point={seasonDoc.point}
           pos={onPlayerMap ? state.position : null}
-          mode={state.mode}
           today={today}
-          onPickMap={pickMapByKey}
           onBump={(d) => today && countStore.bump(state.mode, d, today.limit)}
           onClose={() => setDoc(null)}
         />

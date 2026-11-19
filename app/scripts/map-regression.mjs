@@ -213,47 +213,72 @@ async function checkSeason(page) {
     `标签 ${badges.chips.join(" ")}`,
   );
 
-  // 点一个徽章 → 右侧详情
-  await page.evaluate(() => {
-    document.querySelector(".otm-doc")?.closest(".leaflet-marker-icon")?.click();
-  });
-  await page.waitForSelector(".drawer", { timeout: 8000 }).catch(() => {});
-  await page
-    .waitForFunction(
-      () => [...document.querySelectorAll(".drawer .phb img")].some((i) => i.naturalWidth > 0),
-      null,
-      { timeout: 8000 },
-    )
-    .catch(() => {});
-  const drawer = await page.evaluate(() => {
-    const d = document.querySelector(".drawer");
-    if (!d) return null;
-    return {
-      rows: d.querySelectorAll(".dp").length,
-      chips: [...d.querySelectorAll(".mc")].length,
-      today: d.querySelector(".dtoday")?.textContent?.replace(/\s+/g, " ").trim() ?? null,
-      photo: [...d.querySelectorAll(".phb img")].some((i) => i.naturalWidth > 0),
-      credit: d.querySelector(".src")?.textContent?.trim() ?? "",
-    };
-  });
-  // 楼层对不上、画在地面层的点：详情里仍显示网站写的楼层
-  const floors = await page.evaluate(() =>
-    [...document.querySelectorAll(".drawer .dp")].map((d) => ({
-      desc: d.querySelector(".dpd")?.textContent ?? "",
-      floor: d.querySelector(".fc")?.textContent?.trim() ?? "",
-    })),
-  );
-  const boiler = floors.find((f) => f.desc.includes("锅炉房二楼"));
+  // 点开一个刷新点 → 右侧详情只讲这一个点（主审 #282）：标题、照片、描述、楼层、距离、今日、署名
+  const openPoint = async (key) => {
+    await page.evaluate((k) => {
+      document.querySelector(`[data-k="${k}"]`)?.closest(".leaflet-marker-icon")?.click();
+    }, key);
+    await page.waitForSelector(".drawer.dpane", { timeout: 8000 });
+    await page
+      .waitForFunction(
+        () => [...document.querySelectorAll(".drawer .dphoto img")].some((i) => i.naturalWidth > 0),
+        null,
+        { timeout: 8000 },
+      )
+      .catch(() => {});
+  };
+  // 距离要有：先等自己的箭头出现（回放里有定位），否则这一页不显示距离
+  await page.waitForSelector(".otm-me", { timeout: 30000 }).catch(() => {});
+  const readDrawer = () =>
+    page.evaluate(() => {
+      const d = document.querySelector(".drawer.dpane");
+      if (!d) return null;
+      const icon = d.querySelector("img.ditem");
+      return {
+        type: d.querySelector(".dtt")?.textContent?.trim() ?? "",
+        desc: d.querySelector(".ddesc")?.textContent?.trim() ?? "",
+        floor: d.querySelector(".dmeta .fc")?.textContent?.trim() ?? "",
+        dist: d.querySelector(".dmeta .dpm")?.textContent?.trim() ?? "",
+        today: d.querySelector(".dtoday")?.textContent?.replace(/\s+/g, " ").trim() ?? null,
+        photo: [...d.querySelectorAll(".dphoto img")].some((i) => i.naturalWidth > 0),
+        credit: d.querySelector(".src")?.textContent?.trim() ?? "",
+        // 列表、刷新地图的标签都不该再有
+        list: d.querySelectorAll(".dplist, .dp, .dsec, .mc").length,
+        iconLoaded: !!icon && icon.naturalWidth > 0,
+        iconSrc: icon?.getAttribute("src") ?? "",
+      };
+    });
+
+  await openPoint("se-customs-4");
+  const one = await readDrawer();
   record(
-    "楼层对不上的点仍显示原楼层",
-    !!boiler && boiler.floor === "2F",
-    boiler ? `${boiler.desc.slice(0, 12)}… → ${boiler.floor}` : "没找到那条",
+    "详情只显示点开的这一个点",
+    !!one &&
+      one.list === 0 &&
+      one.desc.includes("锅炉房二楼") &&
+      /^\d+m$/.test(one.dist) &&
+      one.photo &&
+      one.today !== null &&
+      one.credit.includes("逃离塔科夫中文Wiki"),
+    one ? `${one.type}｜${one.desc.slice(0, 12)}…｜${one.floor}｜${one.dist}｜今日 ${one.today}` : "没有抽屉",
+  );
+  // 楼层对不上、画在地面层的点：这里仍显示网站写的楼层
+  record("楼层对不上的点仍显示原楼层", one?.floor === "2F", one ? `锅炉房二楼 → ${one.floor}` : "没有抽屉");
+  // 标题左边的物品图：实机里这里是空的，现在改成打包进程序的资源（assets/），并检查真的画出来了
+  const inlined = /^data:image\/png;base64,/.test(one?.iconSrc ?? "");
+  record(
+    "标题的物品图画出来了",
+    !!one && one.iconLoaded && (inlined || /assets\/.*\.png/.test(one.iconSrc)),
+    one ? `${inlined ? "打包内联的 data URI" : one.iconSrc.split("/").pop()}、naturalWidth ${one.iconLoaded ? ">0" : "=0"}` : "没有图",
   );
 
+  // 换一个点就是换一页：种类、描述都跟着变
+  await openPoint("se-customs-16");
+  const two = await readDrawer();
   record(
-    "点开赛季文件是详情",
-    !!drawer && drawer.rows > 0 && drawer.chips > 0 && drawer.today !== null && drawer.credit.includes("逃离塔科夫中文Wiki"),
-    drawer ? `刷新点 ${drawer.rows}、地图 ${drawer.chips}、今日 ${drawer.today}、照片${drawer.photo ? "已" : "未"}加载` : "没有抽屉",
+    "换一个刷新点就换一页",
+    !!two && two.type === "项目文件" && two.desc.includes("老加油站撤离点房间里") && !two.desc.includes("锅炉房"),
+    two ? `${two.type}｜${two.desc.slice(0, 12)}…` : "没有抽屉",
   );
 
   // 今日 +1，状态栏跟着变；刷新页面后还在（存在本地，跨天归零另有单元测试）

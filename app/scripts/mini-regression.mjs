@@ -9,7 +9,7 @@
 // 外壳用 `?view=mini` 打开叠加层那个窗口，这里照同样的尺寸（420×420 是默认边长）在
 // 浏览器里打开它，用自己造的假事件（截胡 mock-events.jsonl）一个一个状态过：
 // 能渲染、地图跟着朝向转、自己在正中间、楼层和预设名对、进图还没截图时是相机、
-// 位置过时变黄带计时、对局外整块不画、详情卡片、按住展开的大地图、圆形；
+// 位置过时变黄带计时、对局外先画后收（空框、上一局那张图）、详情卡片、按住展开的大地图、圆形；
 // 最后开两个页面，确认主窗口改预设小地图跟着变。
 //
 // 浏览器里验不了的：窗口透明、鼠标穿透、置顶、不在任务栏、不抢焦点、全局热键——
@@ -345,10 +345,11 @@ try {
       events: raidEvents({ end: 3000 }),
     });
     await waitMini(page);
-    await page.waitForFunction(() => !document.querySelector(".mini"), null, { timeout: 30000 });
+    // 刚打开叠加层的 10 秒里，对局外也画；过了这 10 秒才收起来
+    await page.waitForFunction(() => !document.querySelector(".mini"), null, { timeout: 25000 });
     await page.waitForTimeout(200);
     const s = await snapMini(page);
-    record("对局外（默认设置）什么都不画", s.frame === null && s.tags.length === 0, `frame=${JSON.stringify(s.frame)}`);
+    record("对局外（默认设置）过一会儿才什么都不画", s.frame === null && s.tags.length === 0, `frame=${JSON.stringify(s.frame)}`);
 
     // 关掉「对局外隐藏」：整块留着
     await page.evaluate(() => {
@@ -360,8 +361,33 @@ try {
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.waitForFunction(() => document.querySelector(".mini"), null, { timeout: 30000 });
     await page.waitForTimeout(4000); // 等这一局打完
+    const out = await snapMini(page);
+    record("关掉「对局外隐藏」以后整块还在", out.frame !== null);
+    record("对局外画的是上一局那张图", out.annos > 0, `标注 ${out.annos} 个`);
     await shot(page, "34-mini-outside.png");
-    record("关掉「对局外隐藏」以后整块还在", (await snapMini(page)).frame !== null);
+    await context.close();
+  }
+
+  // ——— 4b. 刚打开叠加层、对局外、还没有上一局：灰底空框加相机，10 秒后收起来 ———
+  {
+    const { page, context } = await open(browser, {
+      prefs: prefsWith({ hideOutside: true }, { mockSpeed: 1 }),
+      events: [{ ms: 0, ev: PATHS }],
+    });
+    await page.waitForFunction(() => document.querySelector(".mini"), null, { timeout: 30000 });
+    await page.waitForTimeout(500);
+    const s = await snapMini(page);
+    record("刚打开叠加层，对局外也画出来（空框加相机）", s.frame !== null && s.camera === true, JSON.stringify({ frame: s.frame, camera: s.camera }));
+    const noMap = await page.evaluate(() => !document.querySelector(".mini .map"));
+    record("没有上一局时只是一个灰底空框", noMap);
+    await shot(page, "41-mini-empty.png");
+    let gone = true;
+    try {
+      await page.waitForFunction(() => !document.querySelector(".mini"), null, { timeout: 20000 });
+    } catch {
+      gone = false;
+    }
+    record("10 秒后在对局外收起来", gone);
     await context.close();
   }
 

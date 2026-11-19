@@ -21,8 +21,15 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
+use crate::{log, win};
+
 /// 叠加层窗口的 label，`app/src/overlay/bridge.ts` 里也认这个名字。
 pub const MINI: &str = "mini";
+/// 叠加层页面报过挂载没有：建窗之后几秒内该报，不报就是页面没加载出来。
+static PAGE_MOUNTED: AtomicBool = AtomicBool::new(false);
+/// 等页面报挂载等多久。
+const MOUNT_WAIT: std::time::Duration = std::time::Duration::from_secs(6);
+
 /// 窗口状态变了就发这个事件，两个窗口都听。
 pub const OVERLAY_EVENT: &str = "otm-overlay";
 /// 界面自己处理的热键（预设轮换、详情卡片）走这个事件。
@@ -66,6 +73,10 @@ struct ExpandedFrom {
 #[derive(Serialize, Clone)]
 pub struct OverlayState {
     pub visible: bool,
+    /// Windows 那边真实的可见性（`IsWindowVisible`）；别的系统跟 `visible` 一样。
+    pub screen_visible: bool,
+    /// 窗口样式的一行摘要，排错用。
+    pub dump: String,
     /// 正展开着（按住展开的大地图）。
     pub expanded: bool,
     /// 调整模式：关了鼠标穿透，可以拖动改大小。
@@ -195,28 +206,60 @@ impl Overlay {
 
 /// 打开或关掉叠加层。关掉时连窗口一起关，位置大小先记下来。
 #[tauri::command]
-pub fn overlay_set_enabled(enabled: bool, app: AppHandle) -> Result<(), String> {
-    set_enabled(&app, enabled).map_err(|e| e.to_string())
+/// 会建窗口，所以必须是 `async`：Tauri 的文档说 Windows 上同步命令里建窗口会卡住
+/// WebView2（窗口建出来、页面一直不画，之后的 show/set_* 也不落）。其余动窗口的命令同理。
+pub async fn overlay_set_enabled(
+    enabled: bool,
+    app: AppHandle,
+) -> Result<Option<OverlayState>, String> {
+    log::info(format!(
+        "叠加层：界面要求{}",
+        if enabled { "打开" } else { "关掉" }
+    ));
+    set_enabled(&app, enabled).map_err(|e| {
+        log::error(format!("叠加层开不起来：{e}"));
+        e.to_string()
+    })?;
+    // 打开以后把窗口此刻的样子交给界面，界面写一行日志——两边各记一次，对得出来
+    Ok(enabled.then(|| snapshot(&app)))
+}
+
+/// 界面写日志（出错、挂载这种）。实机上只能靠它看界面那边出了什么事。
+#[tauri::command]
+pub fn overlay_log(message: String) {
+    if message.trim().is_empty() {
+        return;
+    }
+    if message.starts_with("叠加层窗口挂载") {
+        PAGE_MOUNTED.store(true, Ordering::Relaxed);
+    }
+    log::info(format!("[界面] {message}"));
 }
 
 /// 调整模式：关掉鼠标穿透、允许拖动改大小，再按一次回到穿透。
 #[tauri::command]
-pub fn overlay_set_adjust(on: bool, app: AppHandle) {
+pub async fn overlay_set_adjust(on: bool, app: AppHandle) {
+    set_adjust(&app, on);
+}
+
+fn set_adjust(app: &AppHandle, on: bool) {
     let overlay = app.state::<Overlay>();
     if overlay.adjust.load(Ordering::Relaxed) == on {
         return;
     }
+    log::info(format!("调整模式：{}", if on { "进" } else { "出" }));
     if on && overlay.expanded() {
-        collapse(&app);
+        collapse(app);
     }
     let Some(win) = app.get_webview_window(MINI) else {
         return;
     };
     overlay.adjust.store(on, Ordering::Relaxed);
-    let _ = win.set_ignore_cursor_events(!on);
     let _ = win.set_resizable(on);
+    // 上面两个都会让 tao 重算窗口样式，穿透要重新按上
+    restyle(app, !on);
     if on {
-        let _ = win.show();
+        ensure_shown(app, "调整模式显示");
     } else if let Some(b) = bounds_of(&win, overlay.wants_card().then(|| overlay.card_h())) {
         // 拖动改过的位置大小从这里起算。拖出来的窗口不一定是正方形，
         // 边长按宽度算、高度跟着边长（小地图是方的，多出来的空会让它缩在一边）
@@ -228,11 +271,11 @@ pub fn overlay_set_adjust(on: bool, app: AppHandle) {
         });
         if !overlay.expanded() {
             let h = size + overlay.card_area();
-            let _ = win.set_size(LogicalSize::new(size, h));
+            ensure_size(app, size, h, "调整模式退出");
         }
         overlay.persist(true);
     }
-    emit_state(&app);
+    emit_state(app);
 }
 
 /// 详情卡片：窗口往下长出一块给它，收起时缩回去。
@@ -240,8 +283,15 @@ pub fn overlay_set_adjust(on: bool, app: AppHandle) {
 /// 卡片多高由界面量（有没有照片差一大截），`height` 就是界面上报的实际高度；
 /// 展开的大地图铺满窗口，那时只记下开没开，不动窗口。
 #[tauri::command]
-pub fn overlay_set_detail(open: bool, height: Option<f64>, app: AppHandle) {
+pub async fn overlay_set_detail(open: bool, height: Option<f64>, app: AppHandle) {
     let overlay = app.state::<Overlay>();
+    log::info(format!(
+        "详情卡片：{}，高度 {}",
+        if open { "开" } else { "关" },
+        height
+            .map(|h| format!("{h:.0}"))
+            .unwrap_or_else(|| "没给".into())
+    ));
     let old_card = overlay.card_h();
     let was = overlay.detail.swap(open, Ordering::Relaxed);
     if let Some(h) = height {
@@ -264,16 +314,17 @@ pub fn overlay_set_detail(open: bool, height: Option<f64>, app: AppHandle) {
             0.0
         };
     if (want - h).abs() > 0.5 {
-        let _ = win.set_size(LogicalSize::new(w, want));
+        ensure_size(&app, w, want, "详情卡片");
     }
     emit_state(&app);
 }
 
 /// 设置里的「大小」：正方形边长。
 #[tauri::command]
-pub fn overlay_set_size(size: f64, app: AppHandle) {
+pub async fn overlay_set_size(size: f64, app: AppHandle) {
     let overlay = app.state::<Overlay>();
     let s = clamp_size(size);
+    log::info(format!("小地图边长：{s:.0}"));
     let mut g = overlay.lock_bounds();
     if let Some(b) = *g {
         *g = Some(Bounds { w: s, h: s, ..b });
@@ -283,9 +334,9 @@ pub fn overlay_set_size(size: f64, app: AppHandle) {
     if overlay.expanded() {
         return;
     }
-    if let Some(win) = app.get_webview_window(MINI) {
+    if app.get_webview_window(MINI).is_some() {
         let h = s + overlay.card_area();
-        let _ = win.set_size(LogicalSize::new(s, h));
+        ensure_size(&app, s, h, "设置里的边长");
         emit_state(&app);
     }
 }
@@ -297,7 +348,8 @@ pub fn overlay_state(app: AppHandle) -> OverlayState {
 
 /// 重新注册全部全局热键。返回每一条的结果，注册不上的在设置里标红。
 #[tauri::command]
-pub fn overlay_set_hotkeys(bindings: Vec<Binding>, app: AppHandle) -> Vec<HotkeyStatus> {
+pub async fn overlay_set_hotkeys(bindings: Vec<Binding>, app: AppHandle) -> Vec<HotkeyStatus> {
+    log::info(format!("热键：界面交了 {} 条", bindings.len()));
     let gs = app.global_shortcut();
     let _ = gs.unregister_all();
     let mut out = Vec::new();
@@ -317,15 +369,59 @@ pub fn overlay_set_hotkeys(bindings: Vec<Binding>, app: AppHandle) -> Vec<Hotkey
                 ok: true,
                 error: None,
             },
-            Err(e) => HotkeyStatus {
-                action: b.action,
-                accelerator,
-                ok: false,
-                error: Some(e.to_string()),
-            },
+            Err(e) => {
+                log::warn(format!("热键 {}={} 注册不上：{e}", b.action, accelerator));
+                HotkeyStatus {
+                    action: b.action,
+                    accelerator,
+                    ok: false,
+                    error: Some(e.to_string()),
+                }
+            }
         });
     }
+    let ok = out.iter().filter(|s| s.ok).count();
+    log::info(format!("热键 {}/{} 条注册上了", ok, out.len()));
     out
+}
+
+/// 页面画完时调一次（见 `main.rs` 的 `on_page_load`）：mini 要确保真的在屏幕上。
+/// 调 tao 的 `show()`，结果（成功/报错）写进日志。
+/// 实机上这两个调用一直没落到窗口上，所以每次都要留下"它自己说成不成"的记录。
+fn try_show(win: &tauri::WebviewWindow, why: &str) {
+    match win.show() {
+        Ok(()) => log::info(format!("{why}：show() 说自己成功了")),
+        Err(e) => log::warn(format!("{why}：show() 报错 {e}")),
+    }
+}
+
+/// 调 tao 的 `set_ignore_cursor_events()`，结果写进日志。
+fn try_click_through(win: &tauri::WebviewWindow, on: bool, why: &str) {
+    match win.set_ignore_cursor_events(on) {
+        Ok(()) => log::info(format!(
+            "{why}：set_ignore_cursor_events({on}) 说自己成功了"
+        )),
+        Err(e) => log::warn(format!("{why}：set_ignore_cursor_events({on}) 报错 {e}")),
+    }
+}
+
+pub fn on_page_loaded(webview: &tauri::Webview) {
+    if webview.label() != MINI {
+        return;
+    }
+    let window = webview.window();
+    log::info(format!("mini 页面画完：{}", win::describe(&window)));
+    let app = window.app_handle().clone();
+    // 页面加载事件本身跑在主线程上，动窗口的活挪进异步运行时再做（跟 async 命令同一条路）。
+    // 这时把 Tauri 那两个调用再叫一遍，各自返回值都留下记录；读回不对才直设。
+    tauri::async_runtime::spawn(async move {
+        let adjust = app.state::<Overlay>().adjust.load(Ordering::Relaxed);
+        if let Some(win) = app.get_webview_window(MINI) {
+            try_click_through(&win, !adjust, "页面画完");
+        }
+        ensure_shown(&app, "页面画完");
+        restyle(&app, !adjust);
+    });
 }
 
 /// 窗口事件：主窗口关掉就跟着关叠加层（没有托盘，留着也没法再叫回来），
@@ -389,8 +485,9 @@ fn set_enabled(app: &AppHandle, enabled: bool) -> tauri::Result<()> {
         emit_state(app);
         return Ok(());
     }
-    if let Some(win) = app.get_webview_window(MINI) {
-        let _ = win.show();
+    if shell_window(app).is_some() {
+        restyle(app, false);
+        ensure_shown(app, "打开叠加层（窗口已在）");
         emit_state(app);
         return Ok(());
     }
@@ -400,7 +497,13 @@ fn set_enabled(app: &AppHandle, enabled: bool) -> tauri::Result<()> {
 fn create(app: &AppHandle) -> tauri::Result<()> {
     let overlay = app.state::<Overlay>();
     let b = overlay.current(default_bounds(app));
-    let win = WebviewWindowBuilder::new(app, MINI, WebviewUrl::App("index.html?view=mini".into()))
+    log::info(format!(
+        "建 mini 窗口：{:.0}×{:.0} @ ({:.0},{:.0})",
+        b.w, b.h, b.x, b.y
+    ));
+    // 不靠 URL 区分窗口：mini 也加载 index.html，前端按窗口 label 认自己。
+    // （浏览器里回归脚本还用 `?view=mini`，那是留给没有外壳的地方。）
+    WebviewWindowBuilder::new(app, MINI, WebviewUrl::App("index.html".into()))
         .title("otm")
         .inner_size(b.w, b.h)
         .position(b.x, b.y)
@@ -409,29 +512,174 @@ fn create(app: &AppHandle) -> tauri::Result<()> {
         .always_on_top(true)
         .skip_taskbar(true)
         .resizable(false)
+        // 页面自己认窗口用这个，不靠 URL（实机上带查询串那个地址可疑地空白）
+        .initialization_script("window.__OTM_VIEW = 'mini';")
         // 不抢焦点：点它、热键把它叫出来都不打断游戏
         .focused(false)
         .focusable(false)
-        .visible(false)
+        // 直接建成可见的：实机上"先藏着、命令里再 show()"这一步没有生效
+        .visible(true)
         .shadow(false)
-        .build()?;
-    // 默认鼠标穿透：不挡准星、不挡拖动
-    let _ = win.set_ignore_cursor_events(true);
-    let _ = win.show();
+        .build()
+        .map_err(|e| {
+            log::error(format!("mini 窗口建不出来：{e}"));
+            e
+        })?;
+    log::info("mini 窗口建好了");
+    // 页面到底加载出来没有：几秒内没有来自页面的挂载报告，就记一条警告
+    PAGE_MOUNTED.store(false, Ordering::Relaxed);
+    let watchdog = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(MOUNT_WAIT);
+        if PAGE_MOUNTED.load(Ordering::Relaxed) {
+            return;
+        }
+        log::warn("mini 页面 6 秒没有报挂载：页面大概没加载出来（看上面有没有『页面画完了』）");
+        if let Some(window) = shell_window(&watchdog) {
+            log::info(format!("窗口现状：{}", win::describe(&window)));
+        }
+    });
+    // 建好就落一份 overlay.json：这个文件在不在，也成了"窗口建出来没有"的证据
+    overlay.remember(b);
+    overlay.persist(true);
+    // 先让 Tauri 自己设一遍并读回，没生效才直设（见 restyle / ensure_shown）
+    restyle(app, true);
+    ensure_shown(app, "建窗");
+    if let Some(window) = shell_window(app) {
+        log::info(format!("窗口现状：{}", win::describe(&window)));
+    }
     emit_state(app);
     Ok(())
 }
 
-fn toggle_visible(app: &AppHandle) {
+/// 把窗口该有的样子再按一遍（任务栏、穿透）：**先走 Tauri 自己的 API**，
+/// 再用 `win.rs` 读回 Windows 上的真实样式；只有读回来发现没生效，才直接对 HWND 设，
+/// 并在日志里写明"Tauri 没生效、已改用直设"——这样日志本身就能回答 async 是不是真正的原因。
+///
+/// 凡是动过窗口样式（显示、改可缩放、页面画完）之后都要调用这里。
+/// 拿到那个窗口本身（`Window`，不是 `WebviewWindow`）：Win32 那些样式在它身上。
+fn shell_window(app: &AppHandle) -> Option<tauri::Window> {
+    let wv = app.get_webview_window(MINI)?;
+    let webview: &tauri::Webview = wv.as_ref();
+    Some(webview.window())
+}
+
+fn restyle(app: &AppHandle, click_through: bool) {
     let Some(win) = app.get_webview_window(MINI) else {
         return;
     };
-    let visible = win.is_visible().unwrap_or(false);
-    if visible {
-        let _ = win.hide();
-    } else {
-        let _ = win.show();
+    let Some(window) = shell_window(app) else {
+        return;
+    };
+    // 不进任务栏
+    if let Err(e) = win.set_skip_taskbar(true) {
+        log::warn(format!("set_skip_taskbar(true) 报错 {e}"));
     }
+    if win::in_taskbar(&window) == Some(true) {
+        log::warn("Tauri 的 set_skip_taskbar 没生效，已改用直设");
+        log::info(win::hide_from_taskbar(&window));
+    }
+    // 鼠标穿透
+    try_click_through(&win, click_through, "按样式");
+    if let Some(real) = win::is_click_through(&window) {
+        if real != click_through {
+            log::warn("Tauri 的 set_ignore_cursor_events 没生效，已改用直设");
+            log::info(win::click_through(&window, click_through));
+        }
+    }
+    log::info(format!("窗口现状：{}", win::describe(&window)));
+}
+
+/// 让窗口真的在屏幕上：先 Tauri 的 `show()`，读回 `IsWindowVisible` 不算数才直设。
+fn ensure_shown(app: &AppHandle, why: &str) {
+    let Some(win) = app.get_webview_window(MINI) else {
+        return;
+    };
+    try_show(&win, why);
+    let Some(window) = shell_window(app) else {
+        return;
+    };
+    if win::is_visible(&window) == Some(true) {
+        return;
+    }
+    log::warn(format!("{why}：Tauri 的 show() 没生效，已改用直设"));
+    log::info(win::force_show(&window));
+}
+
+/// 挪位置、改大小：先 Tauri 的 `set_position`/`set_size`，读回矩形对不上才直设。
+fn ensure_place(app: &AppHandle, x: f64, y: f64, w: f64, h: f64, why: &str) {
+    let Some(win) = app.get_webview_window(MINI) else {
+        return;
+    };
+    if let Err(e) = win.set_position(LogicalPosition::new(x, y)) {
+        log::warn(format!("{why}：set_position 报错 {e}"));
+    }
+    if let Err(e) = win.set_size(LogicalSize::new(w, h)) {
+        log::warn(format!("{why}：set_size 报错 {e}"));
+    }
+    let Some(window) = shell_window(app) else {
+        return;
+    };
+    if win::fits(&window, x, y, w, h) == Some(true) {
+        return;
+    }
+    log::warn(format!(
+        "{why}：Tauri 的 set_position/set_size 没生效，已改用直设"
+    ));
+    log::info(win::place(&window, x, y, w, h));
+}
+
+/// 只改大小，同样先 Tauri 再读回。
+fn ensure_size(app: &AppHandle, w: f64, h: f64, why: &str) {
+    let Some(win) = app.get_webview_window(MINI) else {
+        return;
+    };
+    if let Err(e) = win.set_size(LogicalSize::new(w, h)) {
+        log::warn(format!("{why}：set_size 报错 {e}"));
+    }
+    let Some(window) = shell_window(app) else {
+        return;
+    };
+    // 只比大小，位置不归这里管
+    if win::fits_size(&window, w, h) == Some(true) {
+        return;
+    }
+    log::warn(format!("{why}：Tauri 的 set_size 没生效，已改用直设"));
+    log::info(win::size(&window, w, h));
+}
+
+/// 让窗口真的藏起来，同样先 Tauri 再读回。
+fn ensure_hidden(app: &AppHandle, why: &str) {
+    let Some(win) = app.get_webview_window(MINI) else {
+        return;
+    };
+    if let Err(e) = win.hide() {
+        log::warn(format!("{why}：hide() 报错 {e}"));
+    }
+    let Some(window) = shell_window(app) else {
+        return;
+    };
+    if win::is_visible(&window) == Some(false) {
+        return;
+    }
+    log::warn(format!("{why}：Tauri 的 hide() 没生效，已改用直设"));
+    log::info(win::hide(&window));
+}
+
+fn toggle_visible(app: &AppHandle) {
+    let Some(win) = app.get_webview_window(MINI) else {
+        log::warn("按了显示/隐藏，但 mini 窗口不在");
+        return;
+    };
+    let visible = win.is_visible().unwrap_or(false);
+    log::info(format!("显示/隐藏：{}", if visible { "藏" } else { "露" }));
+    if visible {
+        ensure_hidden(app, "显示/隐藏");
+    } else {
+        ensure_shown(app, "显示/隐藏");
+    }
+    let adjust = app.state::<Overlay>().adjust.load(Ordering::Relaxed);
+    restyle(app, !adjust);
     emit_state(app);
 }
 
@@ -443,6 +691,7 @@ fn expand(app: &AppHandle) {
     if overlay.expanded() {
         return;
     }
+    log::info("按住展开");
     let from = bounds_of(&win, overlay.wants_card().then(|| overlay.card_h()))
         .unwrap_or_else(|| overlay.current(default_bounds(app)));
     // 原来藏着的话，松开以后还得藏回去
@@ -455,12 +704,9 @@ fn expand(app: &AppHandle) {
     let (mx, my, mw, mh) = monitor_area(&win);
     let w = (mw * EXPAND_RATIO).min(EXPAND_MAX.0).max(MIN_SIZE);
     let h = (w * EXPAND_MAX.1 / EXPAND_MAX.0).min(mh * EXPAND_RATIO);
-    let _ = win.set_position(LogicalPosition::new(
-        mx + (mw - w) / 2.0,
-        my + (mh - h) / 2.0,
-    ));
-    let _ = win.set_size(LogicalSize::new(w, h));
-    let _ = win.show();
+    let (x, y) = (mx + (mw - w) / 2.0, my + (mh - h) / 2.0);
+    ensure_place(app, x, y, w, h, "按住展开");
+    ensure_shown(app, "按住展开");
     emit_state(app);
 }
 
@@ -469,12 +715,28 @@ fn collapse(app: &AppHandle) {
     let Some(from) = overlay.lock_expanded().take() else {
         return;
     };
-    if let Some(win) = app.get_webview_window(MINI) {
+    log::info(format!(
+        "松开收回：{}×{}，原来{}",
+        from.bounds.w,
+        from.bounds.h,
+        if from.visible {
+            "在屏幕上"
+        } else {
+            "是藏着的"
+        }
+    ));
+    if app.get_webview_window(MINI).is_some() {
         let h = from.bounds.h + overlay.card_area();
-        let _ = win.set_size(LogicalSize::new(from.bounds.w, h));
-        let _ = win.set_position(LogicalPosition::new(from.bounds.x, from.bounds.y));
+        ensure_place(
+            app,
+            from.bounds.x,
+            from.bounds.y,
+            from.bounds.w,
+            h,
+            "松开收回",
+        );
         if !from.visible {
-            let _ = win.hide();
+            ensure_hidden(app, "松开收回");
         }
     }
     emit_state(app);
@@ -483,31 +745,41 @@ fn collapse(app: &AppHandle) {
 /// 热键按下、松开时该做什么。窗口的事直接做，界面的事交给界面（预设轮换、详情卡片）。
 fn handle_hotkey(app: &AppHandle, action: &str, state: ShortcutState) {
     let pressed = matches!(state, ShortcutState::Pressed);
-    match action {
-        "show" => {
-            if pressed {
-                toggle_visible(app);
+    // 每次按键都留一行：热键到底有没有触发，看这里
+    log::info(format!(
+        "热键 {action} {}",
+        if pressed { "按下" } else { "松开" }
+    ));
+    // 动窗口的活放进异步运行时跑（跟 async 命令同一条路），不占热键那条线程。
+    // 这里没有任何一条热键会建窗口：窗口只在设置里打开叠加层时建。
+    let app = app.clone();
+    let action = action.to_string();
+    tauri::async_runtime::spawn(async move {
+        match action.as_str() {
+            "show" => {
+                if pressed {
+                    toggle_visible(&app);
+                }
+            }
+            "expand" => {
+                if pressed {
+                    expand(&app);
+                } else {
+                    collapse(&app);
+                }
+            }
+            "adjust" => {
+                if pressed {
+                    let on = !app.state::<Overlay>().adjust.load(Ordering::Relaxed);
+                    set_adjust(&app, on);
+                }
+            }
+            other => {
+                let payload = serde_json::json!({ "action": other, "pressed": pressed });
+                let _ = app.emit_to(MINI, HOTKEY_EVENT, payload);
             }
         }
-        "expand" => {
-            if pressed {
-                expand(app);
-            } else {
-                collapse(app);
-            }
-        }
-        "adjust" => {
-            if pressed {
-                let overlay = app.state::<Overlay>();
-                let on = !overlay.adjust.load(Ordering::Relaxed);
-                overlay_set_adjust(on, app.clone());
-            }
-        }
-        other => {
-            let payload = serde_json::json!({ "action": other, "pressed": pressed });
-            let _ = app.emit_to(MINI, HOTKEY_EVENT, payload);
-        }
-    }
+    });
 }
 
 /// 正方形边长夹在设置里的范围内，取整像素。
@@ -524,9 +796,14 @@ fn snapshot(app: &AppHandle) -> OverlayState {
         .get_webview_window(MINI)
         .and_then(|w| w.is_visible().ok())
         .unwrap_or(false);
+    let window = shell_window(app);
+    let screen_visible = window.as_ref().and_then(win::is_visible).unwrap_or(visible);
+    let dump = window.map(|w| win::describe(&w)).unwrap_or_default();
     let b = overlay.current(Bounds::default());
     OverlayState {
         visible,
+        screen_visible,
+        dump,
         expanded: overlay.expanded(),
         adjust: overlay.adjust.load(Ordering::Relaxed),
         w: b.w,

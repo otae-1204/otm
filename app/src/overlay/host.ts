@@ -5,7 +5,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { HOTKEY_ACTIONS, prefsStore, usePrefs, type Hotkeys } from "../prefs";
-import { inTauri, listenOverlay, overlayInvoke, type OverlayWindowState } from "./bridge";
+import { inTauri, listenOverlay, logToShell, overlayInvoke, type OverlayWindowState } from "./bridge";
 
 /** 一条热键的注册结果。 */
 export interface HotkeyResult {
@@ -47,9 +47,13 @@ export function useOverlayHost() {
   // 热键的值拼成一个字符串当依赖：改哪个键都会重新注册
   const hotkeyKey = HOTKEY_ACTIONS.map((a) => `${a.id}=${ov.hotkeys[a.id]}`).join("|");
 
-  // 开关：关掉时外壳把窗口、热键一起收掉
+  // 开关：关掉时外壳把窗口、热键一起收掉。打开后把外壳看到的窗口状态记一行，
+  // 实机上窗口明明建出来了却没露出来，日志里要能对得出来。
   useEffect(() => {
-    if (inTauri) void overlayInvoke("overlay_set_enabled", { enabled: ov.enabled });
+    if (!inTauri) return;
+    void overlayInvoke<OverlayWindowState>("overlay_set_enabled", { enabled: ov.enabled }).then((s) => {
+      if (s?.dump) logToShell(`[主窗口] 打开叠加层后：${s.dump}`);
+    });
   }, [ov.enabled]);
 
   // 热键：开着才注册

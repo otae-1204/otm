@@ -165,34 +165,27 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .dh { display: flex; align-items: center; gap: 14px; padding: 20px 22px 16px; }
 .dback { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); background: rgba(255,255,255,.05); flex: none; }
 .dback:hover { color: var(--text); }
-.ditem { width: 52px; height: 52px; object-fit: contain; border-radius: 10px; background: rgba(255,255,255,.05); padding: 6px; flex: none; }
+.dibox { position: relative; width: 52px; height: 52px; border-radius: 10px; background: rgba(255,255,255,.05); display: grid; place-items: center; flex: none; overflow: hidden; }
+.dibox svg.dibg { width: 26px; height: 26px; opacity: .85; }
+/* 物品图铺满方块；它画不出来时 onError 把它收起来，露出下面的文件形状 */
+.ditem { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 6px; }
 .dtt { font-size: 22px; font-weight: 700; }
 .dst { font-size: 13px; color: var(--muted); margin-top: 2px; }
 .drow { display: flex; align-items: center; gap: 12px; padding: 10px 22px; border-top: 1px solid var(--line); font-size: 15px; }
 .dkey { color: var(--muted); width: 64px; flex: none; }
-.dms { display: flex; gap: 8px; flex-wrap: wrap; }
-.mc { height: 30px; padding: 0 14px; border-radius: 15px; font-size: 14px; color: var(--muted); background: rgba(255,255,255,.04); border: 1px solid var(--line); }
-.mc:hover { color: var(--text); }
-.mc.on { color: #14171c; background: var(--accent); border-color: var(--accent); font-weight: 700; }
 .dtoday { font-size: 16px; }
 .dtoday b { font-size: 20px; font-weight: 700; }
 .cnt2 { margin-left: auto; display: flex; gap: 8px; }
 .cnt2 button { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; color: var(--text); background: rgba(255,255,255,.06); }
 .cnt2 button:hover { background: rgba(255,255,255,.12); }
 .cnt2 button:disabled { opacity: .3; }
-.dsec { display: flex; align-items: baseline; gap: 8px; padding: 14px 22px 8px; color: var(--muted); font-size: 13px; }
-.dsec .n { margin-left: auto; }
-.dplist { flex: 1; overflow: auto; padding: 0 16px 12px; display: flex; flex-direction: column; gap: 4px; }
-.dp { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 8px; border-radius: 12px; }
-.dp:hover { background: rgba(255,255,255,.04); }
-.dp.on { display: block; background: rgba(255,255,255,.05); padding: 12px; }
-.phb { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 8px; background: rgba(255,255,255,.05); overflow: hidden; flex: none; }
-.phb img { width: 100%; height: 100%; object-fit: cover; }
-.dp.on .phb { width: 100%; height: 220px; border-radius: 12px; }
-.dpd { flex: 1; font-size: 14px; line-height: 1.45; }
-.dp.on .dpd { flex: none; margin-top: 12px; font-size: 15px; }
-.dpf { display: flex; align-items: center; gap: 8px; flex: none; }
-.dp.on .dpf { margin-top: 10px; }
+/* 一个点的详情：大照片、描述、楼层与距离（v2-d-doc.png） */
+.dpane { bottom: auto; max-height: calc(100% - 16px); }
+.dphoto { margin: 0 22px; height: 248px; border-radius: 14px; background: rgba(255,255,255,.04); display: grid; place-items: center; overflow: hidden; flex: none; }
+.dphoto img { width: 100%; height: 100%; object-fit: cover; }
+.dphoto svg.dibg { width: 44px; height: 44px; opacity: .25; }
+.ddesc { padding: 16px 22px 0; font-size: 15px; line-height: 1.55; }
+.dmeta { display: flex; align-items: center; gap: 10px; padding: 12px 22px 16px; }
 .fc { height: 22px; padding: 0 8px; border-radius: 6px; display: inline-grid; place-items: center; font-size: 12px; color: var(--muted); background: rgba(255,255,255,.08); }
 .dpm { font-size: 13px; color: var(--muted); }
 .dp.on .dpm { margin-left: auto; }

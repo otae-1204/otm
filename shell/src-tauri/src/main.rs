@@ -15,7 +15,9 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
+mod log;
 mod overlay;
+mod win;
 
 use otm_core::event::{Snapshot, SnapshotPaths};
 use otm_core::watcher::{WatchOptions, Watcher};
@@ -47,7 +49,18 @@ fn main() {
         // 叠加层的全局热键；注册、注销都在 overlay.rs 里，界面只交键位
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
+            // 日志先起来：后面每一步出错都往文件里写，实机上窗口没出来时只能看它
+            let local = app
+                .path()
+                .app_local_data_dir()
+                .unwrap_or_else(|_| std::env::temp_dir().join("otm"));
+            log::init(local.join("otm.log"));
+            log::bridge_crates();
+            log::install_panic_hook();
+            log::info(format!("本机数据目录 {}", local.display()));
+
             let watcher = Watcher::start(WatchOptions::default());
+            log::info("日志监听已开始");
             let (game_dir_tx, game_dir_rx) = mpsc::channel();
             app.manage(Shell {
                 snapshot: Mutex::new(empty_snapshot()),
@@ -58,6 +71,10 @@ fn main() {
                 .path()
                 .app_config_dir()
                 .unwrap_or_else(|_| std::env::temp_dir().join("otm"));
+            log::info(format!(
+                "叠加层配置文件 {}",
+                dir.join("overlay.json").display()
+            ));
             app.manage(overlay::Overlay::new(dir.join("overlay.json")));
             forward_events(app.handle().clone(), watcher, game_dir_rx);
             show_window_fallback(app.handle().clone());
@@ -67,7 +84,14 @@ fn main() {
             // 窗口建出来时是藏着的（tauri.conf.json 里 visible: false），
             // 等页面画完再露出来，免得先闪一下白底。
             if matches!(payload.event(), PageLoadEvent::Finished) {
+                log::info(format!(
+                    "页面画完了：label={} url={}",
+                    webview.label(),
+                    webview.url().map(|u| u.to_string()).unwrap_or_default()
+                ));
                 let _ = webview.window().show();
+                // mini 窗口在这一步也确保真的露出来（实机上建窗时那次显示没生效）
+                overlay::on_page_loaded(webview);
             }
         })
         .on_window_event(overlay::on_window_event)
@@ -79,13 +103,15 @@ fn main() {
             overlay::overlay_set_detail,
             overlay::overlay_set_size,
             overlay::overlay_set_hotkeys,
-            overlay::overlay_state
+            overlay::overlay_state,
+            overlay::overlay_log
         ])
         .build(tauri::generate_context!())
         .expect("otm 起不来")
         .run(|app, event| {
             // 退出前把叠加层的位置大小写下来，下次打开还在原地
             if let tauri::RunEvent::Exit = event {
+                log::info("退出");
                 overlay::persist_on_exit(app);
             }
         });
