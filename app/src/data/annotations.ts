@@ -15,7 +15,8 @@ export type CategoryId =
   | "loot"
   | "spawn"
   | "switch"
-  | "gun";
+  | "gun"
+  | "season";
 
 export interface Annotation {
   /** 稳定 id，用于 React key。 */
@@ -27,6 +28,8 @@ export interface Annotation {
   x: number;
   y: number;
   z: number;
+  /** 标注图标的颜色：赛季文件按种类上色，别的按大类取。 */
+  color?: string;
   /** 撤离点/转移点/危险区/开关的外框，游戏坐标。 */
   outline?: GamePoint[];
   /** 外框的上下沿，用来判断它属于哪一层。 */
@@ -35,6 +38,13 @@ export interface Annotation {
   icon: string;
   /** 卡片上额外显示的一行。 */
   note?: string;
+  /**
+   * 已经定下来的层号（赛季包里的点位带楼层，不用按高度算）。
+   * 缺省时按 top/bottom/position.y 和区域框算，见 floors.ts。
+   */
+  layer?: number;
+  /** 赛季文件：种类和它在赛季包里的序号，点开详情时要。 */
+  season?: { type: string; index: number };
 }
 
 export const CATEGORY_ORDER: CategoryId[] = [
@@ -46,6 +56,7 @@ export const CATEGORY_ORDER: CategoryId[] = [
   "spawn",
   "switch",
   "gun",
+  "season",
 ];
 
 /** 各大类的颜色（DESIGN 7.1 与 mockup2.html 的 --c-* 变量）。合并圆和子类 chip 用它。 */
@@ -58,6 +69,7 @@ export const CATEGORY_COLOR: Record<CategoryId, string> = {
   spawn: "#7d8794",
   switch: "#7d8794",
   gun: "#7d8794",
+  season: "#4da3ff",
 };
 
 /** 大类在列表和「统一图标」里用的图标（左侧筛选面板也是这一套）。 */
@@ -70,6 +82,7 @@ export const CATEGORY_ICON: Record<CategoryId, string> = {
   spawn: "spawn_pmc",
   switch: "switch",
   gun: "stationarygun",
+  season: "season",
 };
 
 /**
@@ -98,6 +111,7 @@ export const CATEGORY_NAMES: Record<CategoryId, string> = {
   spawn: "出生点",
   switch: "开关",
   gun: "固定武器",
+  season: "赛季文件",
 };
 
 /** 上游 lootContainers 的 normalizedName → 图标（app/public/icons/container_*.png）。 */
@@ -212,6 +226,8 @@ export interface SubItem {
   name: string;
   count: number;
   icon?: string;
+  /** 子类标签自己的颜色（赛季文件按种类上色）；没有就用大类的颜色。 */
+  color?: string;
 }
 
 export interface AnnotationSet {
@@ -372,6 +388,7 @@ export function buildAnnotations(
     else if (a.category === "spawn") push("spawn", a.sub, a.name, a.icon);
     else if (a.category === "extract") push("extract", a.sub, extractFactionName(a.sub), a.icon);
     else if (a.category === "hazard") push("hazard", a.sub, a.name, a.icon);
+    // 赛季文件的子类清单由赛季包给（withSeason），这里不重复算
   }
   return { items, subs };
 }

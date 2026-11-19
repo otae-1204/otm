@@ -18,6 +18,8 @@ import {
   type FilterState,
 } from "../prefs";
 import { mockHandle } from "../events/mock";
+import { seasonStore, useSeason } from "../data/season/store";
+import { openExternal } from "./SeasonSheet";
 import { iconUrl } from "../map/icons";
 import { IconCaret } from "./icons";
 
@@ -30,6 +32,7 @@ const CATEGORY_ICON: Record<CategoryId, string> = {
   spawn: "spawn_pmc",
   switch: "switch",
   gun: "stationarygun",
+  season: "season",
 };
 
 type Tab = "presets" | "display" | "locate" | "data";
@@ -114,6 +117,7 @@ function PresetEditor({ set }: { set: AnnotationSet }) {
         presets,
         activePresetId: presets[0]?.id ?? "",
         overrides: {},
+        subOverrides: {},
       };
     });
   };
@@ -125,7 +129,9 @@ function PresetEditor({ set }: { set: AnnotationSet }) {
           <button
             key={x.id}
             className={`pi${x.id === p.id ? " on" : ""}`}
-            onClick={() => prefsStore.update((old) => ({ ...old, activePresetId: x.id, overrides: {} }))}
+            onClick={() =>
+              prefsStore.update((old) => ({ ...old, activePresetId: x.id, overrides: {}, subOverrides: {} }))
+            }
           >
             {x.name}
           </button>
@@ -294,6 +300,72 @@ function LocatePanel() {
   );
 }
 
+/** 赛季包：换文件、移除、署名（DESIGN 6.7.1）。 */
+function SeasonPanel() {
+  const season = useSeason();
+  const pack = season.pack;
+  return (
+    <>
+      <div className="h">赛季文件</div>
+      <div className="kv">
+        <span>赛季包</span>
+        <b className={pack ? "good" : ""}>
+          {pack ? (season.origin === "imported" ? "换过的" : "自带") : "没有"}
+        </b>
+        {pack ? <span>{pack.season.name}</span> : null}
+      </div>
+      {season.error ? (
+        <div className="kv">
+          <span />
+          <span className="bad">{season.error}</span>
+        </div>
+      ) : null}
+      {pack ? (
+        <div className="kv">
+          <span>署名</span>
+          <a
+            className="link"
+            href={pack.source.url}
+            onClick={(e) => {
+              e.preventDefault();
+              openExternal(pack.source.url);
+            }}
+          >
+            位置与照片：{pack.source.name}
+          </a>
+        </div>
+      ) : null}
+      <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+        <label className="chip" style={{ cursor: "pointer" }}>
+          换一个文件
+          <input
+            type="file"
+            accept=".json,application/json"
+            style={{ display: "none" }}
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              // 读不了就在下面那行写出来，不弹窗
+              await seasonStore.importText(await f.text());
+            }}
+          />
+        </label>
+        {season.origin === "imported" ? (
+          <button className="chip" onClick={() => seasonStore.restore()}>
+            用自带的
+          </button>
+        ) : null}
+        {pack ? (
+          <button className="chip" onClick={() => seasonStore.remove()}>
+            移除
+          </button>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
 function DataPanel({ data, mock }: { data: DataBundle; mock: boolean }) {
   const rows = [
     { key: "mapsMeta", label: "地图配置" },
@@ -302,7 +374,10 @@ function DataPanel({ data, mock }: { data: DataBundle; mock: boolean }) {
   ];
   return (
     <>
-      <div className="h">上游数据</div>
+      <SeasonPanel />
+      <div className="h" style={{ marginTop: 18 }}>
+        上游数据
+      </div>
       {rows.map((r) => {
         const s = data.status[r.key];
         const age = s?.cachedAt ? Math.round((Date.now() - s.cachedAt) / 60000) : null;

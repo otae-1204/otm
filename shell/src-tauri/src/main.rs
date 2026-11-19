@@ -38,6 +38,8 @@ struct Shell {
 
 fn main() {
     tauri::Builder::default()
+        // 界面里"用系统浏览器打开链接"走 plugin:opener|open_url，权限见 capabilities/default.json
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let watcher = Watcher::start(WatchOptions::default());
             let (game_dir_tx, game_dir_rx) = mpsc::channel();

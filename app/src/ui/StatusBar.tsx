@@ -6,6 +6,7 @@ import { layerName } from "../data/annotations";
 import type { AppState } from "../state";
 import { clock, duration, mmss } from "../util";
 import { IconCamera, IconCaret, IconFolder } from "./icons";
+import { iconUrl } from "../map/icons";
 
 export interface StatusBarProps {
   state: AppState;
@@ -19,10 +20,14 @@ export interface StatusBarProps {
   ageSeconds: number | null;
   manualMap: string | null;
   onPickMap: (gameMap: string | null) => void;
+  /** 今日已拾取数 / 上限；没有赛季包或这个档案没上限时为 null。 */
+  season: { count: number; limit: number } | null;
+  onOpenSeason: () => void;
 }
 
 export function StatusBar(props: StatusBarProps) {
-  const { state, meta, mapLabel, choices, layer, staleSeconds, ageSeconds, manualMap, onPickMap } = props;
+  const { state, meta, mapLabel, choices, layer, staleSeconds, ageSeconds, manualMap, onPickMap, season, onOpenSeason } =
+    props;
   const [open, setOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
@@ -102,6 +107,13 @@ export function StatusBar(props: StatusBarProps) {
         ) : null}
         {mode ? <span>{mode}</span> : null}
         {inRaid && state.position ? <b>{clock(state.position.time)}</b> : null}
+        {season ? (
+          <button className="seas" onClick={onOpenSeason} title="赛季文件">
+            <img src={iconUrl("season")} alt="" />
+            <b>{season.count}</b>
+            <span className="of">/ {season.limit}</span>
+          </button>
+        ) : null}
       </div>
     </>
   );

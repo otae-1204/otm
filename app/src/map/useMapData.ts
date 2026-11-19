@@ -61,7 +61,9 @@ export function filterAnnotations(
   const out: Annotation[] = [];
   for (const a of set.items) {
     if (!subVisible(f, a.category, a.sub)) continue;
-    if (!onLayer(meta, layer, a, a.top, a.bottom)) continue;
+    // 自带层号（赛季包的点位）直接认；没有的按高度和区域框算
+    const ok = a.layer !== undefined ? a.layer === layer : onLayer(meta, layer, a, a.top, a.bottom);
+    if (!ok) continue;
     out.push(a);
   }
   return out;

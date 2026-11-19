@@ -4,7 +4,7 @@
 // 行按 mockup2.html 的 .frow：图标 + 名称 + 数量，没有开关；
 // 关掉的大类整行变淡，点整行切换。
 
-import { useState } from "react";
+import { Fragment, useState, type CSSProperties } from "react";
 import type { AnnotationSet, CategoryId } from "../data/annotations";
 import { CATEGORY_ICON, CATEGORY_NAMES, CATEGORY_ORDER } from "../data/annotations";
 import {
@@ -13,6 +13,8 @@ import {
   effectiveFilters,
   newPresetId,
   prefsStore,
+  subKey,
+  subVisible,
   usePrefs,
   type FilterState,
 } from "../prefs";
@@ -34,6 +36,7 @@ export function PresetChips() {
       presets: [...old.presets, { id, name: `预设 ${old.presets.length + 1}`, filters }],
       activePresetId: id,
       overrides: {},
+      subOverrides: {},
     }));
     setRenaming(id);
     setDraft(`预设 ${prefs.presets.length + 1}`);
@@ -57,7 +60,9 @@ export function PresetChips() {
         <button
           key={p.id}
           className={`chip${p.id === prefs.activePresetId ? " on" : ""}`}
-          onClick={() => prefsStore.update((old) => ({ ...old, activePresetId: p.id, overrides: {} }))}
+          onClick={() =>
+            prefsStore.update((old) => ({ ...old, activePresetId: p.id, overrides: {}, subOverrides: {} }))
+          }
           onDoubleClick={() => {
             setRenaming(p.id);
             setDraft(p.name);
@@ -102,6 +107,12 @@ export function FilterPanel({ set }: { set: AnnotationSet }) {
     prefsStore.update((old) => ({ ...old, overrides: { ...old.overrides, [c]: next } }));
   };
 
+  const toggleSub = (c: CategoryId, id: string) => {
+    // 子类开关同样是临时调整：只改 subOverrides，不动预设
+    const next = !subVisible(f, c, id);
+    prefsStore.update((old) => ({ ...old, subOverrides: { ...old.subOverrides, [subKey(c, id)]: next } }));
+  };
+
   const toggleTrail = () => {
     prefsStore.update((old) => ({
       ...old,
@@ -112,22 +123,43 @@ export function FilterPanel({ set }: { set: AnnotationSet }) {
   };
 
   const countOf = (c: CategoryId) => set.items.filter((a) => a.category === c).length;
+  const seasonSubs = set.subs.season ?? [];
 
   return (
     <div className="filters">
       {CATEGORY_ORDER.map((c) => {
         const on = f.categories[c];
+        // 赛季文件：没有赛季包、或者这张图不刷文件时整行不出现（DESIGN 6.7.1）
+        if (c === "season" && seasonSubs.length === 0) return null;
         return (
-          <button
-            key={c}
-            className={`frow${on ? "" : " off"}`}
-            onClick={() => toggleCategory(c)}
-            title={CATEGORY_NAMES[c]}
-          >
-            <img src={iconUrl(CATEGORY_ICON[c])} alt="" />
-            <span>{CATEGORY_NAMES[c]}</span>
-            <span className="n">{countOf(c)}</span>
-          </button>
+          <Fragment key={c}>
+            <button
+              className={`frow${on ? "" : " off"}`}
+              onClick={() => toggleCategory(c)}
+              title={CATEGORY_NAMES[c]}
+            >
+              <img src={iconUrl(CATEGORY_ICON[c])} alt="" />
+              <span>{CATEGORY_NAMES[c]}</span>
+              <span className="n">{countOf(c)}</span>
+            </button>
+            {c === "season" && on ? (
+              <div className="subs2">
+                {seasonSubs.map((s) => {
+                  const son = subVisible(f, "season", s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      className={`sc season${son ? " on" : ""}`}
+                      style={{ "--c": s.color } as CSSProperties}
+                      onClick={() => toggleSub("season", s.id)}
+                    >
+                      {s.name}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </Fragment>
         );
       })}
       <div className="sep" />

@@ -41,6 +41,8 @@ export interface Prefs {
   activePresetId: string;
   /** 主窗口左侧的临时调整，叠在预设之上。 */
   overrides: Partial<Record<CategoryId, boolean>>;
+  /** 临时调整里的子类开关，键同 subs。 */
+  subOverrides: SubFilters;
   /** 手动指定的地图（游戏内部名）；null 表示跟着对局走。 */
   manualMap: string | null;
   baseStyle: "svg" | "tile";
@@ -63,13 +65,14 @@ export const ALL_CATEGORIES: CategoryId[] = [
   "spawn",
   "switch",
   "gun",
+  "season",
 ];
 
 /** 做任务：只看路和门，物资与出生点全关。 */
-const TASK_ON: CategoryId[] = ["extract", "transit", "lock", "hazard"];
+const TASK_ON: CategoryId[] = ["extract", "transit", "lock", "hazard", "season"];
 
 /** 跑刀：撤离点、转移点，物资里只留值钱的几种。 */
-const RUN_ON: CategoryId[] = ["extract", "transit", "loot"];
+const RUN_ON: CategoryId[] = ["extract", "transit", "loot", "season"];
 
 const RUN_LOOT = [
   "safe",
@@ -110,6 +113,7 @@ function defaultPrefs(): Prefs {
     presets: [doTask, runScav],
     activePresetId: doTask.id,
     overrides: {},
+    subOverrides: {},
     manualMap: null,
     baseStyle: "svg",
     tileBrightness: DEFAULT_TILE_BRIGHTNESS,
@@ -132,9 +136,10 @@ const KEY = "otm.prefs";
 /**
  * 存储格式版本：
  * 2：做任务/跑刀的默认开关改过，升级时重置这两个内置预设；
- * 3：加了合并标注的图标选项。
+ * 3：加了合并标注的图标选项；
+ * 4：加了赛季文件这一大类，内置预设默认打开它。
  */
-const VERSION = 3;
+const VERSION = 4;
 
 /** 把任意存下来的预设整理成当前格式，认不出的字段丢掉。 */
 function normalizePreset(raw: unknown): Preset | null {
@@ -183,6 +188,15 @@ function load(): Prefs {
       return f ? { ...p, filters: f.filters } : p;
     });
   }
+  if (oldVersion < 4) {
+    // 加了赛季文件：只把这一位打开，预设里别的开关维持用户原来的样子
+    const fresh = new Map(d.presets.map((p) => [p.id, p]));
+    presets = presets.map((p) => {
+      const f = fresh.get(p.id);
+      if (!f) return p;
+      return { ...p, filters: { ...p.filters, categories: { ...p.filters.categories, season: f.filters.categories.season } } };
+    });
+  }
   if (presets.length === 0) presets = d.presets;
 
   const activePresetId = presets.some((p) => p.id === stored!.activePresetId)
@@ -195,6 +209,7 @@ function load(): Prefs {
     activePresetId,
     // 旧版的临时调整是按旧默认点出来的，升级时清掉，免得盖住新默认
     overrides: oldVersion < 2 ? {} : (stored.overrides ?? {}),
+    subOverrides: oldVersion < 2 ? {} : (stored.subOverrides ?? {}),
     manualMap: typeof stored.manualMap === "string" ? stored.manualMap : null,
     baseStyle: stored.baseStyle === "tile" ? "tile" : "svg",
     tileBrightness:
@@ -271,7 +286,9 @@ export function effectiveFilters(p: Prefs): FilterState {
     const o = p.overrides[c];
     if (o !== undefined) categories[c] = o;
   }
-  return { ...base, categories };
+  const subs = { ...base.subs };
+  for (const [k, v] of Object.entries(p.subOverrides)) if (v !== undefined) subs[k] = v;
+  return { ...base, categories, subs };
 }
 
 export function newPresetId() {

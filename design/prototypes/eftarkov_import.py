@@ -7,9 +7,12 @@
 用撤离点把"网站像素坐标 -> 游戏坐标"的变换拟合出来，再套到其他点位上。
 
 用法: python3 eftarkov_import.py <网站地图页目录> <上游数据目录> <输出 json>
+
+网站地图页是 https://www.eftarkov.com/map/<地图 id>，存成 <地图 id>.html 放进第一个目录。
 """
 import collections
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -25,52 +28,82 @@ def site_config(path):
     return cfg
 
 
+def rms(pts):
+    """点集的均方根半径，用来估两边的尺度。"""
+    c = sum(pts) / len(pts)
+    return math.sqrt(sum(abs(p - c) ** 2 for p in pts) / len(pts))
+
+
+def match_pairs(P, game_pts, k, t):
+    """一对一配对：都在误差内的候选按距离从小到大认领，两边各只用一次。
+
+    必须一对一：多对一的最近点匹配会让退化解（把所有点缩到某一个撤离点上）
+    也报出很高的"对上数"，2026-11-19 就是这么把海关的 30 个点全算成了一处。
+    """
+    cand = []
+    for i, p in enumerate(P):
+        q = k * p + t
+        for a, g in enumerate(game_pts):
+            d = abs(q - g)
+            if d <= TOL:
+                cand.append((d, i, a))
+    cand.sort()
+    used_p, used_g, pairs = set(), set(), []
+    for d, i, a in cand:
+        if i in used_p or a in used_g:
+            continue
+        used_p.add(i)
+        used_g.add(a)
+        pairs.append((i, a, d))
+    return pairs
+
+
 def fit(site_pts, game_pts):
-    """不知道谁对应谁，枚举两对点假设一个相似变换，取内点最多的。"""
+    """不知道谁对应谁，枚举两对点假设一个相似变换，取一对一配对里对上最多的。
+
+    同一张图的撤离点分布形状两边是一样的，所以先把尺度估出来（两边 RMS 半径之比），
+    只在这个尺度附近找：退化的解尺度会差出几十倍，一上来就被筛掉了。
+    """
+    k0 = rms(game_pts) / rms(site_pts)
     best = (0, None)
     for refl in (False, True):
         P = [p.conjugate() if refl else p for p in site_pts]
         for i in range(len(P)):
-            for j in range(len(P)):
-                if i == j or abs(P[i] - P[j]) < 30:
+            for j in range(i + 1, len(P)):
+                dp = P[i] - P[j]
+                if abs(dp) < 1:
                     continue
                 for a in range(len(game_pts)):
-                    for b in range(len(game_pts)):
-                        if a == b:
-                            continue
-                        k = (game_pts[a] - game_pts[b]) / (P[i] - P[j])
-                        if not 0.02 < abs(k) < 5:
+                    for b in range(a + 1, len(game_pts)):
+                        k = (game_pts[a] - game_pts[b]) / dp
+                        if not 0.7 * k0 < abs(k) < 1.4 * k0:
                             continue
                         t = game_pts[a] - k * P[i]
-                        n = 0
-                        for p in P:
-                            q = k * p + t
-                            if min(abs(q - g) for g in game_pts) < TOL:
-                                n += 1
+                        n = len(match_pairs(P, game_pts, k, t))
                         if n > best[0]:
                             best = (n, (refl, k, t))
     return best
 
 
 def refine(site_pts, game_pts, model):
-    """用内点做一次最小二乘，把相似变换修得更准。"""
+    """用配上的点做最小二乘，把相似变换修得更准；配对和拟合交替两三遍。"""
     refl, k, t = model
+    P = [p.conjugate() if refl else p for p in site_pts]
     pairs = []
-    for p in site_pts:
-        pp = p.conjugate() if refl else p
-        q = k * pp + t
-        g = min(game_pts, key=lambda g: abs(q - g))
-        if abs(q - g) < TOL:
-            pairs.append((pp, g))
-    n = len(pairs)
-    mp = sum(p for p, _ in pairs) / n
-    mg = sum(g for _, g in pairs) / n
-    num = sum((g - mg) * (p - mp).conjugate() for p, g in pairs)
-    den = sum(abs(p - mp) ** 2 for p, _ in pairs)
-    k2 = num / den
-    t2 = mg - k2 * mp
-    err = [abs(k2 * p + t2 - g) for p, g in pairs]
-    return (refl, k2, t2), n, sum(err) / n, max(err)
+    for _ in range(3):
+        pairs = match_pairs(P, game_pts, k, t)
+        if len(pairs) < 3:
+            break
+        mp = sum(P[i] for i, _, _ in pairs) / len(pairs)
+        mg = sum(game_pts[a] for _, a, _ in pairs) / len(pairs)
+        num = sum((game_pts[a] - mg) * (P[i] - mp).conjugate() for i, a, _ in pairs)
+        den = sum(abs(P[i] - mp) ** 2 for i, _, _ in pairs)
+        k = num / den
+        t = mg - k * mp
+    pairs = match_pairs(P, game_pts, k, t)
+    err = [abs(k * P[i] + t - game_pts[a]) for i, a, _ in pairs]
+    return (refl, k, t), len(pairs), sum(err) / len(err), max(err)
+
 
 
 def main():
@@ -99,9 +132,10 @@ def main():
             if m0 and n >= 3:
                 model, n2, mean, worst = refine(site_ex, game_ex, m0)
                 info = f"对上 {n2}/{len(site_ex)} 个撤离点，平均误差 {mean:.1f} 米，最大 {worst:.1f} 米"
-                if n2 < max(3, len(site_ex) // 2):
+                # 对上一半以上、平均偏差 10 米以内才用：偏差大的点会让整张图的点位全都飘
+                if n2 < max(3, len(site_ex) // 2) or mean > 10:
                     model = None
-                    info += "（对上的太少，不采用）"
+                    info += "（对上的太少或偏差太大，不采用）"
         print(f"{name}: 标注 {len(marks)}，赛季文件 {len(docs)}，任务相关 {len(tasks)} | {info}")
 
         def conv(m):

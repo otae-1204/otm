@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node scripts/floors.test.mjs"
+    "test": "node scripts/floors.test.mjs && node scripts/season.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",

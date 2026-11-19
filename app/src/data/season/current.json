@@ -1,0 +1,2951 @@
+{
+ "format": "otm-season-pack",
+ "version": 1,
+ "season": {
+  "name": "当前赛季"
+ },
+ "limits": {
+  "Regular": 25,
+  "Pve": 15,
+  "PvpSeason": 40
+ },
+ "source": {
+  "name": "逃离塔科夫中文Wiki",
+  "url": "https://www.eftarkov.com",
+  "photos": "https://www.eftarkov.com"
+ },
+ "types": [
+  {
+   "id": "pmc",
+   "name": "PMC 个人档案",
+   "item": "6a317b9692cfdcddcb02a58e",
+   "color": "#7fd8ff"
+  },
+  {
+   "id": "finance",
+   "name": "财务文件",
+   "item": "6a31807f17005505b70d5827",
+   "color": "#4a54ff"
+  },
+  {
+   "id": "project",
+   "name": "项目文件",
+   "item": "6a3181f178450ec91c0ea1aa",
+   "color": "#ff5ec4"
+  },
+  {
+   "id": "blueprint",
+   "name": "蓝图与技术文档",
+   "item": "6a31824878450ec91c0ea1ae",
+   "color": "#2fd0d4"
+  },
+  {
+   "id": "test",
+   "name": "测试文档",
+   "item": "6a31828557705071410ca00e",
+   "color": "#e6ecf5"
+  },
+  {
+   "id": "staff",
+   "name": "员工文档",
+   "item": "6a3182b72fd891345e047eef",
+   "color": "#ff9ef0"
+  },
+  {
+   "id": "medical",
+   "name": "医疗文件",
+   "item": "6a3182dc6cd8de21cf0a3a7d",
+   "color": "#cfe3ff"
+  },
+  {
+   "id": "technical",
+   "name": "技术文档",
+   "item": "6a31830dde69ceafd805afa0",
+   "color": "#b07bff"
+  }
+ ],
+ "maps": [
+  {
+   "key": "factory",
+   "name": "工厂",
+   "points": [
+    {
+     "type": "blueprint",
+     "x": 18.7,
+     "z": -22.7,
+     "floor": "Tunnels",
+     "desc": "在二号门右边地下的尸体身上",
+     "images": [
+      "/uploads/infoImg/202609061924229116.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -23.6,
+     "z": 47.4,
+     "floor": "Tunnels",
+     "desc": "在工厂储藏室里，需要：TerraGroup 仓库钥匙卡",
+     "images": [
+      "/uploads/infoImg/202609061925541329.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -17.5,
+     "z": -27.0,
+     "floor": null,
+     "desc": "在医疗帐篷大门撤离点门外帐篷里的桌子上",
+     "images": [
+      "/uploads/infoImg/202609061926342543.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 25.9,
+     "z": -36.4,
+     "floor": null,
+     "desc": "在医疗区一楼的板凳上",
+     "images": [
+      "/uploads/infoImg/202609061926591877.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 33.1,
+     "z": -36.6,
+     "floor": null,
+     "desc": "在医疗区一楼的柜子上",
+     "images": [
+      "/uploads/infoImg/202609061927299888.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 27.3,
+     "z": -36.6,
+     "floor": "2nd Floor",
+     "desc": "在医疗区二楼的桌子上",
+     "images": [
+      "/uploads/infoImg/202609061929372966.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 47.3,
+     "z": -46.2,
+     "floor": null,
+     "desc": "在二号门里面的架子上",
+     "images": [
+      "/uploads/infoImg/202609061930241709.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 31.2,
+     "z": 17.4,
+     "floor": null,
+     "desc": "在工厂铁网旁的旋转楼梯下的柜子里",
+     "images": [
+      "/uploads/infoImg/202609061930574912.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 53.2,
+     "z": 22.1,
+     "floor": null,
+     "desc": "在三号门外叉车右边的铁皮集装箱里",
+     "images": [
+      "/uploads/infoImg/202609061931256525.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 11.8,
+     "z": 38.0,
+     "floor": null,
+     "desc": "在办公区一楼保险箱旁边的抽屉里",
+     "images": [
+      "/uploads/infoImg/202609061932059587.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 24.8,
+     "z": 41.9,
+     "floor": null,
+     "desc": "在办公区一楼从外面翻墙进的小房间里",
+     "images": [
+      "/uploads/infoImg/202609061932288311.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 9.2,
+     "z": 37.8,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼办公室里",
+     "images": [
+      "/uploads/infoImg/202609061932557899.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 19.5,
+     "z": 39.6,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼办公室里",
+     "images": [
+      "/uploads/infoImg/202609061933411125.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 27.4,
+     "z": 42.9,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼上锁的房间里，需要：工厂紧急出口钥匙",
+     "images": [
+      "/uploads/infoImg/202609061934574495.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 26.9,
+     "z": 34.9,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼走廊的抽屉柜里",
+     "images": [
+      "/uploads/infoImg/202609061935362162.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 28.5,
+     "z": 37.7,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼上锁的房间里，需要：工厂紧急出口钥匙",
+     "images": [
+      "/uploads/infoImg/202609061853422817.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 22.0,
+     "z": 39.5,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼踹开门的房间里",
+     "images": [
+      "/uploads/infoImg/202609061854467611.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 19.5,
+     "z": 37.7,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼的保险房里",
+     "images": [
+      "/uploads/infoImg/202609061855242329.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 9.4,
+     "z": 42.2,
+     "floor": "3rd Floor",
+     "desc": "在办公区三楼的保险房里",
+     "images": [
+      "/uploads/infoImg/202609061915294934.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 24.8,
+     "z": 41.6,
+     "floor": null,
+     "desc": "在办公区一楼翻窗进去的房间里",
+     "images": [
+      "/uploads/infoImg/202609061916001945.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 11.2,
+     "z": 40.9,
+     "floor": null,
+     "desc": "在办公区一楼火桶旁的书堆里",
+     "images": [
+      "/uploads/infoImg/202609061916414906.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 54.2,
+     "z": 24.6,
+     "floor": null,
+     "desc": "在三号门外叉车旁的集装箱内",
+     "images": [
+      "/uploads/infoImg/202609061917232814.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 41.0,
+     "z": -16.3,
+     "floor": null,
+     "desc": "在二号门外的泵房里",
+     "images": [
+      "/uploads/infoImg/202609061917571386.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 74.0,
+     "z": -33.6,
+     "floor": null,
+     "desc": "在叉车长廊的椅子上",
+     "images": [
+      "/uploads/infoImg/202609061918465978.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 36.0,
+     "z": -36.4,
+     "floor": null,
+     "desc": "在实验室一楼的推车旁",
+     "images": [
+      "/uploads/infoImg/202609061919183676.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 29.4,
+     "z": -36.0,
+     "floor": null,
+     "desc": "在实验室一楼的蓝色衣柜里",
+     "images": [
+      "/uploads/infoImg/202609061920066181.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 25.2,
+     "z": -21.1,
+     "floor": "2nd Floor",
+     "desc": "在实验室二楼的地上",
+     "images": [
+      "/uploads/infoImg/202609061920368359.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -23.7,
+     "z": 17.1,
+     "floor": "2nd Floor",
+     "desc": "在信使尸体二楼的配电柜后面",
+     "images": [
+      "/uploads/infoImg/202609061921054146.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -3.2,
+     "z": 46.5,
+     "floor": "Tunnels",
+     "desc": "在办公区地下",
+     "images": [
+      "/uploads/infoImg/202609061921541906.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -21.4,
+     "z": 45.7,
+     "floor": "Tunnels",
+     "desc": "在工厂储藏室里，需要：TerraGroup 仓库钥匙卡",
+     "images": [
+      "/uploads/infoImg/202609061922268666.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "customs",
+   "name": "海关",
+   "points": [
+    {
+     "type": "finance",
+     "x": 466.4,
+     "z": -61.6,
+     "floor": null,
+     "desc": "在化学品仓库的架子上",
+     "images": [
+      "/uploads/infoImg/202609062115139894.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 315.2,
+     "z": -186.0,
+     "floor": null,
+     "desc": "在老加油站撤离点的桌子上",
+     "images": [
+      "/uploads/infoImg/202609062121066238.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 273.7,
+     "z": -75.1,
+     "floor": "3rd Floor",
+     "desc": "在熊猫楼三楼的桌子上",
+     "images": [
+      "/uploads/infoImg/202609062131359123.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 205.2,
+     "z": -122.2,
+     "floor": null,
+     "desc": "在新烂尾楼里的沙发上",
+     "images": [
+      "/uploads/infoImg/202609062130262159.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 95.3,
+     "z": -67.5,
+     "floor": null,
+     "desc": "在锅炉房二楼的保险箱上，需要：公司主管办公室钥匙",
+     "images": [
+      "/uploads/infoImg/202609062132475078.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "finance",
+     "x": 61.3,
+     "z": -63.4,
+     "floor": "3rd Floor",
+     "desc": "在17号仓库三楼的桌子上",
+     "images": [
+      "/uploads/infoImg/202609062133513489.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 79.7,
+     "z": -162.1,
+     "floor": "2nd Floor",
+     "desc": "在情报楼二楼地上的一堆书中",
+     "images": [
+      "/uploads/infoImg/202609062134474757.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 78.3,
+     "z": -158.9,
+     "floor": "2nd Floor",
+     "desc": "在情报楼二楼的书架上",
+     "images": [
+      "/uploads/infoImg/202609062135393112.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 65.8,
+     "z": -106.7,
+     "floor": null,
+     "desc": "在情报楼外停车场的铁皮集装箱中",
+     "images": [
+      "/uploads/infoImg/202609062136551496.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -203.8,
+     "z": -35.2,
+     "floor": null,
+     "desc": "在红厂房外的蓝色亭子中",
+     "images": [
+      "/uploads/infoImg/202609062137594757.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -204.8,
+     "z": -111.2,
+     "floor": "2nd Floor",
+     "desc": "在红厂房二楼的桌子上，需要：海关 Tarcone 主管办公室钥匙",
+     "images": [
+      "/uploads/infoImg/202609062139089706.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 173.1,
+     "z": 182.0,
+     "floor": "2nd Floor",
+     "desc": "在三层宿舍楼212房间的柜子上",
+     "images": [
+      "/uploads/infoImg/202609062140106600.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 170.0,
+     "z": 153.7,
+     "floor": "3rd Floor",
+     "desc": "在三层宿舍楼304房间的柜子上",
+     "images": [
+      "/uploads/infoImg/202609062143175360.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 223.5,
+     "z": 139.8,
+     "floor": null,
+     "desc": "在二层宿舍楼正门门卫室里桌子上，需要：宿舍门卫室钥匙",
+     "images": [
+      "/uploads/infoImg/202609062145357077.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 227.4,
+     "z": 161.1,
+     "floor": "2nd Floor",
+     "desc": "在二层宿舍楼212房间的床下",
+     "images": [
+      "/uploads/infoImg/202609062146256813.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 579.2,
+     "z": -49.6,
+     "floor": "2nd Floor",
+     "desc": "在USEC仓库二楼",
+     "images": [
+      "/uploads/infoImg/202609062157475731.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 316.7,
+     "z": -179.4,
+     "floor": null,
+     "desc": "在老加油站撤离点房间里",
+     "images": [
+      "/uploads/infoImg/202609062158264704.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 197.2,
+     "z": -102.5,
+     "floor": null,
+     "desc": "在新烂尾楼一楼的架子上",
+     "images": [
+      "/uploads/infoImg/202609062159462556.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 104.0,
+     "z": -88.8,
+     "floor": null,
+     "desc": "在修车房的桌子上",
+     "images": [
+      "/uploads/infoImg/202609062200282064.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 92.7,
+     "z": -67.5,
+     "floor": null,
+     "desc": "在锅炉房二楼的柜子上，需要：公司主管办公室钥匙",
+     "images": [
+      "/uploads/infoImg/202609062201125132.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "project",
+     "x": 28.7,
+     "z": -65.9,
+     "floor": null,
+     "desc": "在17号仓库二楼柜子中",
+     "images": [
+      "/uploads/infoImg/202609062202058273.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "project",
+     "x": 61.6,
+     "z": -66.6,
+     "floor": "3rd Floor",
+     "desc": "在17号仓库三楼的桌子下",
+     "images": [
+      "/uploads/infoImg/202609062203181381.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 79.6,
+     "z": -161.0,
+     "floor": "2nd Floor",
+     "desc": "在情报楼二楼的书架上",
+     "images": [
+      "/uploads/infoImg/202609062203513964.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 79.1,
+     "z": -165.7,
+     "floor": "2nd Floor",
+     "desc": "在情报楼二楼的柜子旁",
+     "images": [
+      "/uploads/infoImg/202609062204195632.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 69.5,
+     "z": -170.2,
+     "floor": null,
+     "desc": "在情报楼外的集装箱内",
+     "images": [
+      "/uploads/infoImg/202609062204521445.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -186.3,
+     "z": -185.5,
+     "floor": null,
+     "desc": "在红厂房外的蓝色铁皮房内",
+     "images": [
+      "/uploads/infoImg/202609062205296046.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -202.4,
+     "z": -106.9,
+     "floor": "2nd Floor",
+     "desc": "在红厂房二楼的桌子下",
+     "images": [
+      "/uploads/infoImg/202609062206084673.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 172.9,
+     "z": 182.7,
+     "floor": "2nd Floor",
+     "desc": "在三层宿舍楼212房间桌子下",
+     "images": [
+      "/uploads/infoImg/202609062206516000.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 223.8,
+     "z": 138.9,
+     "floor": "2nd Floor",
+     "desc": "在二层宿舍楼207房间板凳下",
+     "images": [
+      "/uploads/infoImg/202609062207249744.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 236.3,
+     "z": 159.9,
+     "floor": "2nd Floor",
+     "desc": "在二层宿舍楼216房间桌门上",
+     "images": [
+      "/uploads/infoImg/202609062208012356.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "woods",
+   "name": "森林",
+   "points": [
+    {
+     "type": "technical",
+     "x": 369.0,
+     "z": 87.9,
+     "floor": null,
+     "desc": "在前往郊区撤离点路上的黑车尾部",
+     "images": [
+      "/uploads/infoImg/202609070146382248.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -3.2,
+     "z": -81.2,
+     "floor": null,
+     "desc": "在伐木场三间小屋三号小屋内",
+     "images": [
+      "/uploads/infoImg/202609070147534580.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -211.6,
+     "z": 221.1,
+     "floor": null,
+     "desc": "在医疗营地箱子上",
+     "images": [
+      "/uploads/infoImg/202609070149546339.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -247.9,
+     "z": -21.9,
+     "floor": null,
+     "desc": "在坠毁飞机的机头内",
+     "images": [
+      "/uploads/infoImg/202609070150315502.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -670.4,
+     "z": 137.3,
+     "floor": null,
+     "desc": "在列车停放站火车上的集装箱内",
+     "images": [
+      "/uploads/infoImg/202609070151129615.webp",
+      "/uploads/infoImg/2026090701511296156.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -482.6,
+     "z": -176.3,
+     "floor": null,
+     "desc": "在旧伐木场的集装箱内",
+     "images": [
+      "/uploads/infoImg/202609070152117459.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -457.6,
+     "z": -360.4,
+     "floor": null,
+     "desc": "在村庄的房间内",
+     "images": [
+      "/uploads/infoImg/202609070153476991.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -154.7,
+     "z": -278.7,
+     "floor": null,
+     "desc": "在大狙击山的地堡入口",
+     "images": [
+      "/uploads/infoImg/202609070155029496.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -43.5,
+     "z": -258.6,
+     "floor": null,
+     "desc": "在三岔路口旁烧毁的黑车内",
+     "images": [
+      "/uploads/infoImg/202609070155559572.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -60.7,
+     "z": -497.1,
+     "floor": null,
+     "desc": "在三岔路口旁的墓地附近",
+     "images": [
+      "/uploads/infoImg/202609070156182330.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -133.8,
+     "z": -690.2,
+     "floor": null,
+     "desc": "在荒废村庄的邪教房内",
+     "images": [
+      "/uploads/infoImg/202609070157121007.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": 146.6,
+     "z": -724.1,
+     "floor": null,
+     "desc": "在Scav营地右侧的集装箱二楼",
+     "images": [
+      "/uploads/infoImg/202609070157453590.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": 228.9,
+     "z": -715.5,
+     "floor": null,
+     "desc": "在Scav营地的信号塔下",
+     "images": [
+      "/uploads/infoImg/202609070158185215.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": 298.8,
+     "z": -512.0,
+     "floor": null,
+     "desc": "在USCE营地的信号接收器下",
+     "images": [
+      "/uploads/infoImg/202609070158385167.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 239.4,
+     "z": -71.5,
+     "floor": null,
+     "desc": "在USEC检查站铁皮箱内的抽屉上",
+     "images": [
+      "/uploads/infoImg/202609070102227511.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 245.9,
+     "z": -84.1,
+     "floor": null,
+     "desc": "在USEC检查站后面的蓝色厕所里",
+     "images": [
+      "/uploads/infoImg/202609070103466168.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 55.0,
+     "z": -48.3,
+     "floor": null,
+     "desc": "在伐木场白厂房门口的皮卡内",
+     "images": [
+      "/uploads/infoImg/202609070105115541.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -29.0,
+     "z": 49.0,
+     "floor": null,
+     "desc": "在伐木场紫卡小屋内的抽屉上",
+     "images": [
+      "/uploads/infoImg/202609070105545915.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -192.5,
+     "z": 210.3,
+     "floor": null,
+     "desc": "在医疗营地的地上",
+     "images": [
+      "/uploads/infoImg/202609070106241571.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -202.5,
+     "z": 233.8,
+     "floor": null,
+     "desc": "在医疗营地白色长集装箱内",
+     "images": [
+      "/uploads/infoImg/202609070107371089.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -517.1,
+     "z": -175.7,
+     "floor": null,
+     "desc": "在旧伐木场小屋内",
+     "images": [
+      "/uploads/infoImg/202609070108244539.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -549.5,
+     "z": -199.4,
+     "floor": null,
+     "desc": "在旧伐木场小屋二楼",
+     "images": [
+      "/uploads/infoImg/202609070109054932.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -456.0,
+     "z": -364.0,
+     "floor": null,
+     "desc": "在村庄的房间内一楼",
+     "images": [
+      "/uploads/infoImg/202609070110102642.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -511.2,
+     "z": -386.1,
+     "floor": null,
+     "desc": "在村庄的房间内二楼",
+     "images": [
+      "/uploads/infoImg/202609070110498470.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 269.2,
+     "z": -513.7,
+     "floor": null,
+     "desc": "在USEC营地帐篷下的箱子上",
+     "images": [
+      "/uploads/infoImg/202609070111185658.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 282.0,
+     "z": -517.5,
+     "floor": null,
+     "desc": "在USEC营地有担架的桌子上",
+     "images": [
+      "/uploads/infoImg/202609070112134558.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 305.2,
+     "z": -463.0,
+     "floor": null,
+     "desc": "在USEC营地帐篷里",
+     "images": [
+      "/uploads/infoImg/202609070112542070.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 273.4,
+     "z": -446.6,
+     "floor": null,
+     "desc": "在USEC营地木板上",
+     "images": [
+      "/uploads/infoImg/202609070113523018.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 277.2,
+     "z": -436.6,
+     "floor": null,
+     "desc": "在USEC营地板凳上",
+     "images": [
+      "/uploads/infoImg/202609070114172573.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "lighthouse",
+   "name": "灯塔",
+   "points": [
+    {
+     "type": "pmc",
+     "x": 126.3,
+     "z": 296.7,
+     "floor": null,
+     "desc": "在浮动码头二楼的床上",
+     "images": [
+      "/uploads/infoImg/202609130415253386.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "pmc",
+     "x": 137.7,
+     "z": -128.7,
+     "floor": null,
+     "desc": "在海边别墅#1二楼电视柜抽屉夹缝里",
+     "images": [
+      "/uploads/infoImg/202609130416192161.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 133.6,
+     "z": -184.5,
+     "floor": null,
+     "desc": "在海边别墅#2二楼靠着吉他的椅子上",
+     "images": [
+      "/uploads/infoImg/202609130417022124.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -69.6,
+     "z": 116.3,
+     "floor": null,
+     "desc": "在红顶豪宅网球场的帐篷里",
+     "images": [
+      "/uploads/infoImg/202609130417567091.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -124.9,
+     "z": 108.1,
+     "floor": null,
+     "desc": "在红顶豪宅一楼的床边上",
+     "images": [
+      "/uploads/infoImg/202609130418125136.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -123.7,
+     "z": 85.2,
+     "floor": null,
+     "desc": "在红顶豪宅一楼厨房的桌子上",
+     "images": [
+      "/uploads/infoImg/202609130419449505.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -126.4,
+     "z": -21.1,
+     "floor": null,
+     "desc": "在蓝顶豪宅车库二楼的床上",
+     "images": [
+      "/uploads/infoImg/202609130420479955.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -89.6,
+     "z": -71.4,
+     "floor": null,
+     "desc": "在蓝顶豪宅二楼的圆桌上",
+     "images": [
+      "/uploads/infoImg/202609130421554010.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "pmc",
+     "x": -191.0,
+     "z": -210.6,
+     "floor": null,
+     "desc": "在村庄红色房子二楼的桌子上",
+     "images": [
+      "/uploads/infoImg/202609130422467289.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "pmc",
+     "x": -78.0,
+     "z": -296.3,
+     "floor": null,
+     "desc": "在村庄村长家二楼的电视柜下面",
+     "images": [
+      "/uploads/infoImg/202609130423056594.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "pmc",
+     "x": -95.8,
+     "z": -487.0,
+     "floor": null,
+     "desc": "在污水厂直升机旁的帐篷里",
+     "images": [
+      "/uploads/infoImg/202609130423539263.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 51.2,
+     "z": -552.1,
+     "floor": null,
+     "desc": "在一厂门口的集装箱里，需要：叛乱USEC仓库钥匙",
+     "images": [
+      "/uploads/infoImg/202609130424509971.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 48.5,
+     "z": -637.1,
+     "floor": null,
+     "desc": "在一厂二楼的桌上",
+     "images": [
+      "/uploads/infoImg/202609130425175890.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "pmc",
+     "x": -65.0,
+     "z": -736.1,
+     "floor": null,
+     "desc": "在二厂里一楼火桶旁的小房间里",
+     "images": [
+      "/uploads/infoImg/202609130426026717.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -182.3,
+     "z": -651.2,
+     "floor": null,
+     "desc": "在三厂二楼的地上",
+     "images": [
+      "/uploads/infoImg/202609130426496822.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "pmc",
+     "x": 33.7,
+     "z": -849.5,
+     "floor": null,
+     "desc": "在火车站仓库的架子上",
+     "images": [
+      "/uploads/infoImg/202609130427439797.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": 131.5,
+     "z": 297.0,
+     "floor": null,
+     "desc": "在浮动码头二楼的柜中",
+     "images": [
+      "/uploads/infoImg/202609130358559364.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "technical",
+     "x": 131.5,
+     "z": -185.6,
+     "floor": null,
+     "desc": "在海边豪宅#2二楼的电视柜中",
+     "images": [
+      "/uploads/infoImg/202609130359296147.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -70.6,
+     "z": 113.7,
+     "floor": null,
+     "desc": "在红顶豪宅的网球场帐篷中",
+     "images": [
+      "/uploads/infoImg/202609130402581466.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -122.2,
+     "z": 98.3,
+     "floor": null,
+     "desc": "在红顶豪宅一楼的客厅中",
+     "images": [
+      "/uploads/infoImg/202609130403364769.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -83.9,
+     "z": -81.1,
+     "floor": null,
+     "desc": "在蓝顶豪宅一楼酒窖外的桌子上",
+     "images": [
+      "/uploads/infoImg/202609130404002108.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -88.7,
+     "z": -69.5,
+     "floor": null,
+     "desc": "在蓝顶豪宅三楼的柜子旁",
+     "images": [
+      "/uploads/infoImg/202609130404448406.webp"
+     ],
+     "floorLabel": "3F"
+    },
+    {
+     "type": "technical",
+     "x": -63.2,
+     "z": -126.8,
+     "floor": null,
+     "desc": "在蓝顶豪宅外的餐桌椅子上",
+     "images": [
+      "/uploads/infoImg/202609130405084063.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -193.3,
+     "z": -196.4,
+     "floor": null,
+     "desc": "在村庄红色房子一楼的柜子中",
+     "images": [
+      "/uploads/infoImg/202609130406336391.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -75.2,
+     "z": -276.5,
+     "floor": null,
+     "desc": "在村庄村长家二楼的柜子中",
+     "images": [
+      "/uploads/infoImg/202609130407421474.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "technical",
+     "x": -172.8,
+     "z": -499.1,
+     "floor": null,
+     "desc": "在污水厂的一个集装箱内，需要：叛乱USEC工作间钥匙",
+     "images": [
+      "/uploads/infoImg/202609130409041024.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -99.8,
+     "z": -489.0,
+     "floor": null,
+     "desc": "在污水厂直升机旁的帐篷里",
+     "images": [
+      "/uploads/infoImg/202609130409483099.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": 46.7,
+     "z": -549.6,
+     "floor": null,
+     "desc": "在一厂门口的集装箱内，需要：叛乱USEC仓库钥匙",
+     "images": [
+      "/uploads/infoImg/202609130410235263.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": 51.9,
+     "z": -637.8,
+     "floor": null,
+     "desc": "在一厂二楼的书架上",
+     "images": [
+      "/uploads/infoImg/202609130411171851.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "technical",
+     "x": -96.9,
+     "z": -744.1,
+     "floor": null,
+     "desc": "在二厂楼顶的帐篷里",
+     "images": [
+      "/uploads/infoImg/202609130412224557.webp"
+     ],
+     "floorLabel": "3F"
+    },
+    {
+     "type": "technical",
+     "x": -179.2,
+     "z": -653.1,
+     "floor": null,
+     "desc": "在三厂二楼书架旁",
+     "images": [
+      "/uploads/infoImg/202609130412579148.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "technical",
+     "x": 33.4,
+     "z": -851.6,
+     "floor": null,
+     "desc": "在火车站仓库衣柜里",
+     "images": [
+      "/uploads/infoImg/202609130413421589.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "shoreline",
+   "name": "海岸线",
+   "points": [
+    {
+     "type": "technical",
+     "x": 414.4,
+     "z": 163.5,
+     "floor": null,
+     "desc": "在村庄商店后面的房间里翻到的红色沙发下",
+     "images": [
+      "/uploads/infoImg/202609070403136742.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": 96.2,
+     "z": 119.4,
+     "floor": null,
+     "desc": "在真别墅正门的板凳上",
+     "images": [
+      "/uploads/infoImg/202609070404374094.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -183.8,
+     "z": 372.4,
+     "floor": null,
+     "desc": "在着火的加油站的办公室里",
+     "images": [
+      "/uploads/infoImg/202609070405038512.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -238.4,
+     "z": 202.3,
+     "floor": null,
+     "desc": "在水电站里的浴室门口椅子上",
+     "images": [
+      "/uploads/infoImg/202609070405311801.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -209.9,
+     "z": 20.3,
+     "floor": null,
+     "desc": "在疗养院链接水电站的平台椅子上",
+     "images": [
+      "/uploads/infoImg/202609070406073104.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -316.1,
+     "z": 482.6,
+     "floor": null,
+     "desc": "在警察局一楼的桌子上",
+     "images": [
+      "/uploads/infoImg/202609070406343789.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -501.0,
+     "z": 260.2,
+     "floor": null,
+     "desc": "在气象站信号塔上的房间里",
+     "images": [
+      "/uploads/infoImg/202609070407025167.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -704.7,
+     "z": 97.2,
+     "floor": null,
+     "desc": "在红白电塔旁的红色铁皮房里",
+     "images": [
+      "/uploads/infoImg/202609070407262076.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -621.6,
+     "z": -233.1,
+     "floor": null,
+     "desc": "在走私者驻地上面的仓库里",
+     "images": [
+      "/uploads/infoImg/202609070407558407.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -547.7,
+     "z": -337.0,
+     "floor": null,
+     "desc": "在载具撤离点旁的集装箱内",
+     "images": [
+      "/uploads/infoImg/202609070408451684.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -216.2,
+     "z": -89.6,
+     "floor": "2nd Floor",
+     "desc": "在疗养院西楼206房间内",
+     "images": [
+      "/uploads/infoImg/202609070409296813.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -178.5,
+     "z": -81.1,
+     "floor": "3rd Floor",
+     "desc": "在疗养院西楼316房间内",
+     "images": [
+      "/uploads/infoImg/202609070410023321.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -271.1,
+     "z": -142.6,
+     "floor": "2nd Floor",
+     "desc": "在疗养院行政楼二楼打开保险箱的房间里",
+     "images": [
+      "/uploads/infoImg/202609070410337977.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -308.9,
+     "z": -80.0,
+     "floor": "2nd Floor",
+     "desc": "在疗养院东楼212房间内",
+     "images": [
+      "/uploads/infoImg/202609070411172512.webp"
+     ]
+    },
+    {
+     "type": "technical",
+     "x": -267.9,
+     "z": -104.4,
+     "floor": "3rd Floor",
+     "desc": "在疗养院东楼301房间外",
+     "images": [
+      "/uploads/infoImg/202609070411456323.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 444.0,
+     "z": 155.8,
+     "floor": null,
+     "desc": "在村庄商店旁的房间内",
+     "images": [
+      "/uploads/infoImg/202609070345326237.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 279.5,
+     "z": 179.3,
+     "floor": null,
+     "desc": "在村庄一辆蓝色皮卡车里的箱子上",
+     "images": [
+      "/uploads/infoImg/202609070348019420.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": 99.3,
+     "z": 99.1,
+     "floor": null,
+     "desc": "在真别墅后门的医药箱上",
+     "images": [
+      "/uploads/infoImg/202609070348311200.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -134.1,
+     "z": -14.8,
+     "floor": null,
+     "desc": "在疗养院西楼下的停车场小屋后门箱子上",
+     "images": [
+      "/uploads/infoImg/202609070349112710.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -181.1,
+     "z": 368.3,
+     "floor": null,
+     "desc": "在燃烧的加油站办公室内",
+     "images": [
+      "/uploads/infoImg/202609070350149884.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -316.7,
+     "z": 495.8,
+     "floor": null,
+     "desc": "在警察局外的担架上",
+     "images": [
+      "/uploads/infoImg/202609070351226558.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -507.5,
+     "z": 237.0,
+     "floor": null,
+     "desc": "在气象站二楼的椅子上",
+     "images": [
+      "/uploads/infoImg/202609070352056364.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -703.8,
+     "z": 96.6,
+     "floor": null,
+     "desc": "在红白电塔旁的红色铁皮房里",
+     "images": [
+      "/uploads/infoImg/202609070353469154.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -606.4,
+     "z": -182.8,
+     "floor": null,
+     "desc": "在走私者驻地下面仓库里",
+     "images": [
+      "/uploads/infoImg/202609070354212174.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -542.3,
+     "z": -338.7,
+     "floor": null,
+     "desc": "在载具撤离点旁集装箱二楼",
+     "images": [
+      "/uploads/infoImg/202609070355174137.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -194.3,
+     "z": -77.3,
+     "floor": "2nd Floor",
+     "desc": "在疗养院西楼211房间内",
+     "images": [
+      "/uploads/infoImg/202609070355339771.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -228.9,
+     "z": -104.2,
+     "floor": "3rd Floor",
+     "desc": "在疗养院西楼301门外桌子上",
+     "images": [
+      "/uploads/infoImg/202609070358242156.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -236.5,
+     "z": -149.2,
+     "floor": "2nd Floor",
+     "desc": "在疗养院行政楼二楼仓库地上",
+     "images": [
+      "/uploads/infoImg/202609070400037813.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -326.5,
+     "z": -92.0,
+     "floor": "2nd Floor",
+     "desc": "在疗养院东楼218房间内",
+     "images": [
+      "/uploads/infoImg/202609070401204433.webp"
+     ]
+    },
+    {
+     "type": "test",
+     "x": -345.4,
+     "z": -92.1,
+     "floor": "3rd Floor",
+     "desc": "在疗养院东楼326房间内",
+     "images": [
+      "/uploads/infoImg/202609070401537571.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "reserve",
+   "name": "储备站",
+   "points": [
+    {
+     "type": "pmc",
+     "x": 146.6,
+     "z": -231.7,
+     "floor": null,
+     "desc": "在前往森林转移点旁的房间里",
+     "images": [
+      "/uploads/infoImg/202609071948514483.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 58.5,
+     "z": -112.7,
+     "floor": null,
+     "desc": "在月台K4站台的桌子上",
+     "images": [
+      "/uploads/infoImg/202609071949514498.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 29.1,
+     "z": -91.4,
+     "floor": null,
+     "desc": "在月台有火桶的火车箱内",
+     "images": [
+      "/uploads/infoImg/202609071950148446.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 56.7,
+     "z": 103.9,
+     "floor": null,
+     "desc": "在检查点围墙撤离点旁的房间一楼",
+     "images": [
+      "/uploads/infoImg/202609071951312246.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -41.1,
+     "z": 173.9,
+     "floor": null,
+     "desc": "在雷达站外上锁的保安亭窗口",
+     "images": [
+      "/uploads/infoImg/202609071952108721.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -159.2,
+     "z": 2.1,
+     "floor": "2nd Floor",
+     "desc": "在机头楼二楼的柜子里",
+     "images": [
+      "/uploads/infoImg/202609071952478109.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -164.1,
+     "z": 35.8,
+     "floor": "3rd Floor",
+     "desc": "在机侧楼三楼的书架上，需要：RB-OB钥匙",
+     "images": [
+      "/uploads/infoImg/202609071956277688.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -160.6,
+     "z": 67.3,
+     "floor": "3rd Floor",
+     "desc": "在机侧楼三楼的柜子上",
+     "images": [
+      "/uploads/infoImg/202609071957209063.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -122.8,
+     "z": 93.6,
+     "floor": "4th Floor",
+     "desc": "在机尾楼四楼的地上",
+     "images": [
+      "/uploads/infoImg/202609071958095070.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -7.1,
+     "z": 176.3,
+     "floor": "2nd Floor",
+     "desc": "在雷达站二楼的书架上，需要：RB-KORL钥匙",
+     "images": [
+      "/uploads/infoImg/202609071958348404.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -17.4,
+     "z": 176.0,
+     "floor": "2nd Floor",
+     "desc": "在雷达站二楼的桌子上，需要：RB-RLSA 钥匙",
+     "images": [
+      "/uploads/infoImg/202609071959312451.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -12.1,
+     "z": 194.8,
+     "floor": "2nd Floor",
+     "desc": "在雷达站二楼的桌子上，需要：RB-RS钥匙",
+     "images": [
+      "/uploads/infoImg/202609072000164692.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 15.0,
+     "z": -28.7,
+     "floor": "3rd Floor",
+     "desc": "在黑马楼三楼的柜子上",
+     "images": [
+      "/uploads/infoImg/202609072001194221.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": 78.1,
+     "z": -11.8,
+     "floor": "3rd Floor",
+     "desc": "在白马楼三楼的柜子旁",
+     "images": [
+      "/uploads/infoImg/202609072001535680.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -127.5,
+     "z": -21.7,
+     "floor": "Bunkers",
+     "desc": "在机头楼地下房间的桌子上",
+     "images": [
+      "/uploads/infoImg/202609072002581630.webp"
+     ]
+    },
+    {
+     "type": "pmc",
+     "x": -43.4,
+     "z": 133.1,
+     "floor": "Bunkers",
+     "desc": "在D-2撤离点船舱的房间桌子上",
+     "images": [
+      "/uploads/infoImg/202609072003566864.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 55.8,
+     "z": 100.4,
+     "floor": null,
+     "desc": "在检查点围墙撤离点旁房间的一楼",
+     "images": [
+      "/uploads/infoImg/202609071929048887.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -44.1,
+     "z": 185.1,
+     "floor": null,
+     "desc": "在雷达站门卫室抽屉的右侧",
+     "images": [
+      "/uploads/infoImg/202609071933109877.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -54.1,
+     "z": 38.1,
+     "floor": "3rd Floor",
+     "desc": "在皇冠楼三楼两个桌子中间",
+     "images": [
+      "/uploads/infoImg/202609071935246647.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -128.9,
+     "z": -15.1,
+     "floor": "2nd Floor",
+     "desc": "在机头楼二楼的显卡房里，需要：RB-AK 钥匙（也可以从三楼翻窗跳进去）",
+     "images": [
+      "/uploads/infoImg/202609071937033008.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -172.6,
+     "z": -9.2,
+     "floor": "3rd Floor",
+     "desc": "在机头楼三楼的柜子中",
+     "images": [
+      "/uploads/infoImg/202609071937264870.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -153.3,
+     "z": 73.0,
+     "floor": "2nd Floor",
+     "desc": "在机侧楼二楼的抽屉右边",
+     "images": [
+      "/uploads/infoImg/202609071938034062.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -162.8,
+     "z": 31.4,
+     "floor": "4th Floor",
+     "desc": "在机侧楼四楼的沙发上",
+     "images": [
+      "/uploads/infoImg/202609071939182600.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -123.4,
+     "z": 96.1,
+     "floor": "2nd Floor",
+     "desc": "在机尾楼二楼的板凳上",
+     "images": [
+      "/uploads/infoImg/202609071940247219.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -86.6,
+     "z": 83.3,
+     "floor": "2nd Floor",
+     "desc": "在机尾楼二楼的柜子中",
+     "images": [
+      "/uploads/infoImg/202609071940495264.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -6.0,
+     "z": 176.4,
+     "floor": "2nd Floor",
+     "desc": "在雷达站二楼的两个柜子中间，需要：RB-KORL钥匙",
+     "images": [
+      "/uploads/infoImg/202609071941454121.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -16.0,
+     "z": 172.6,
+     "floor": "2nd Floor",
+     "desc": "在雷达站二楼的抽屉和饮水机中间，需要：RB-RLSA 钥匙",
+     "images": [
+      "/uploads/infoImg/202609071942213399.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 14.4,
+     "z": -27.1,
+     "floor": "3rd Floor",
+     "desc": "在黑马楼三楼的电脑桌上",
+     "images": [
+      "/uploads/infoImg/202609071944495513.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": 76.3,
+     "z": -16.2,
+     "floor": "3rd Floor",
+     "desc": "在白马楼三楼的桌子下",
+     "images": [
+      "/uploads/infoImg/202609071945071550.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -108.4,
+     "z": 18.3,
+     "floor": "Bunkers",
+     "desc": "在地下控制室里",
+     "images": [
+      "/uploads/infoImg/202609071946221511.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -115.8,
+     "z": 33.8,
+     "floor": "Bunkers",
+     "desc": "在地下控制室里",
+     "images": [
+      "/uploads/infoImg/202609071946535564.webp"
+     ]
+    },
+    {
+     "type": "project",
+     "x": -60.7,
+     "z": 15.1,
+     "floor": "3rd Floor",
+     "desc": "在皇冠楼三楼阳台边房间里的桌子下面",
+     "images": [
+      "/uploads/infoImg/202609072013491779.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "interchange",
+   "name": "立交桥",
+   "points": [
+    {
+     "type": "blueprint",
+     "x": 481.8,
+     "z": 85.3,
+     "floor": null,
+     "desc": "在信号棒撤离点旁的铁皮集装箱里面的柜子顶部",
+     "images": [
+      "/uploads/infoImg/202609070537421600.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 84.9,
+     "z": 101.7,
+     "floor": "2nd Floor",
+     "desc": "在绿超管理员办公室里，需要：OLI管理员办公室钥匙",
+     "images": [
+      "/uploads/infoImg/202609070538116277.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 87.7,
+     "z": 117.4,
+     "floor": "2nd Floor",
+     "desc": "在绿钞物流办公室里，需要：OLI物流部钥匙",
+     "images": [
+      "/uploads/infoImg/202609070539148741.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -48.6,
+     "z": 123.2,
+     "floor": "2nd Floor",
+     "desc": "在绿钞26号收银机右边的服务台桌子上",
+     "images": [
+      "/uploads/infoImg/202609070539283485.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -87.4,
+     "z": 113.0,
+     "floor": "2nd Floor",
+     "desc": "在绿钞后面的办公室里",
+     "images": [
+      "/uploads/infoImg/202609070540496934.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -93.7,
+     "z": 111.3,
+     "floor": "2nd Floor",
+     "desc": "在绿钞后面的办公室里",
+     "images": [
+      "/uploads/infoImg/202609070541209827.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -78.4,
+     "z": 45.6,
+     "floor": "2nd Floor",
+     "desc": "在关闭警报的办公室里",
+     "images": [
+      "/uploads/infoImg/202609070542121391.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -71.1,
+     "z": 54.7,
+     "floor": "2nd Floor",
+     "desc": "在关闭警报的房间里",
+     "images": [
+      "/uploads/infoImg/202609070542455081.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 65.4,
+     "z": -29.9,
+     "floor": "2nd Floor",
+     "desc": "在中间商场大门进去右边第一个店里抽屉上面",
+     "images": [
+      "/uploads/infoImg/202609070543372280.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 98.7,
+     "z": -87.3,
+     "floor": "2nd Floor",
+     "desc": "在中间商场大门进去左边第一个店里收银台后面的篮子里",
+     "images": [
+      "/uploads/infoImg/202609070544238518.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -62.4,
+     "z": -106.7,
+     "floor": "2nd Floor",
+     "desc": "在红超门口衣服店里的推车里",
+     "images": [
+      "/uploads/infoImg/202609070545324242.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -77.5,
+     "z": -152.0,
+     "floor": "2nd Floor",
+     "desc": "在红超办公室里",
+     "images": [
+      "/uploads/infoImg/202609070546412258.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -67.9,
+     "z": -162.1,
+     "floor": "2nd Floor",
+     "desc": "在红超办公室小房间里",
+     "images": [
+      "/uploads/infoImg/202609070547069495.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": -28.0,
+     "z": -201.8,
+     "floor": "2nd Floor",
+     "desc": "在蓝超展示区大缺口处",
+     "images": [
+      "/uploads/infoImg/202609070547513183.webp"
+     ]
+    },
+    {
+     "type": "blueprint",
+     "x": 3.4,
+     "z": -298.6,
+     "floor": "2nd Floor",
+     "desc": "在蓝超办公室里",
+     "images": [
+      "/uploads/infoImg/202609070548157100.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 424.7,
+     "z": 165.0,
+     "floor": null,
+     "desc": "在信号棒撤离点的圆桌上",
+     "images": [
+      "/uploads/infoImg/202609070519547774.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 143.9,
+     "z": 268.1,
+     "floor": null,
+     "desc": "在绿超外的21WS集装箱里的架子上，你需要先在发电站通电后刷卡进入，需要：Object #21WS 钥匙卡",
+     "images": [
+      "/uploads/infoImg/202609070524013663.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -202.9,
+     "z": -366.6,
+     "floor": null,
+     "desc": "在发电站里的架子上",
+     "images": [
+      "/uploads/infoImg/202609070524265051.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -211.6,
+     "z": -358.0,
+     "floor": null,
+     "desc": "在发电站地下的架子上，需要：14-4 KORD 站点 K.Arshavin 钥匙卡 (修复)【他们已经来了】剧情中的钥匙",
+     "images": [
+      "/uploads/infoImg/202609070525178356.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 84.8,
+     "z": 105.6,
+     "floor": "2nd Floor",
+     "desc": "在绿钞管理员办公室里，需要：OLI管理员办公室钥匙",
+     "images": [
+      "/uploads/infoImg/202609070526401234.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -69.3,
+     "z": 41.7,
+     "floor": "2nd Floor",
+     "desc": "在关闭警报的办公室桌子上",
+     "images": [
+      "/uploads/infoImg/202609070527279487.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -67.7,
+     "z": 54.5,
+     "floor": "2nd Floor",
+     "desc": "在关闭警报房间里",
+     "images": [
+      "/uploads/infoImg/202609070527496095.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -62.1,
+     "z": -50.5,
+     "floor": "2nd Floor",
+     "desc": "在红超门口餐厅的桌子上",
+     "images": [
+      "/uploads/infoImg/202609070528582246.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 27.3,
+     "z": -138.7,
+     "floor": "2nd Floor",
+     "desc": "在EMERCOM医疗区右侧黄色的桌子上",
+     "images": [
+      "/uploads/infoImg/202609070529314712.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -76.4,
+     "z": -156.1,
+     "floor": "2nd Floor",
+     "desc": "在红超办公室的桌子上",
+     "images": [
+      "/uploads/infoImg/202609070530314051.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -65.1,
+     "z": -164.6,
+     "floor": "2nd Floor",
+     "desc": "在红超办公室里小房间的桌子上",
+     "images": [
+      "/uploads/infoImg/202609070531065849.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -20.8,
+     "z": -170.9,
+     "floor": "2nd Floor",
+     "desc": "在红超和蓝超连接处的男厕所里",
+     "images": [
+      "/uploads/infoImg/202609070532036874.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 43.5,
+     "z": -209.5,
+     "floor": "2nd Floor",
+     "desc": "在蓝超收银台处的儿童娱乐设施旁的板凳上",
+     "images": [
+      "/uploads/infoImg/202609070534336723.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 2.1,
+     "z": -307.1,
+     "floor": "2nd Floor",
+     "desc": "在蓝超办公室的桌子上",
+     "images": [
+      "/uploads/infoImg/202609070535101135.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -13.3,
+     "z": -99.8,
+     "floor": "3rd Floor",
+     "desc": "在中间商场二楼汉堡王的黄色沙发上",
+     "images": [
+      "/uploads/infoImg/202609070536116310.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 23.7,
+     "z": -138.9,
+     "floor": "3rd Floor",
+     "desc": "在中间商场二楼汉堡王斜对面的MK店里的柜子上",
+     "images": [
+      "/uploads/infoImg/202609070536396842.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "streets-of-tarkov",
+   "name": "塔科夫街区",
+   "points": [
+    {
+     "type": "staff",
+     "x": 138.7,
+     "z": 377.4,
+     "floor": null,
+     "desc": "在小康科迪亚二楼的房间内",
+     "images": [
+      "/uploads/infoImg/202609072246024207.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "staff",
+     "x": 169.1,
+     "z": 159.4,
+     "floor": null,
+     "desc": "在调解室的桌子上",
+     "images": [
+      "/uploads/infoImg/202609072247321584.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": 46.5,
+     "z": 32.0,
+     "floor": null,
+     "desc": "在邮局餐厅内的椅子上",
+     "images": [
+      "/uploads/infoImg/202609072248368108.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": 140.1,
+     "z": 3.8,
+     "floor": null,
+     "desc": "在BTR停车点“旧的Scav检查站”旁的红车车门上",
+     "images": [
+      "/uploads/infoImg/202609072249151958.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": 135.6,
+     "z": -18.0,
+     "floor": null,
+     "desc": "在TerraGroup集团公寓二楼的桌子上，需要：TerraGroup 集团公寓钥匙",
+     "images": [
+      "/uploads/infoImg/202609072250067944.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "staff",
+     "x": 114.8,
+     "z": -43.2,
+     "floor": null,
+     "desc": "在TerraGroup集团公寓二楼的桌子上，需要：Cardinal 公寓钥匙",
+     "images": [
+      "/uploads/infoImg/202609072250406552.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "staff",
+     "x": 82.6,
+     "z": -27.1,
+     "floor": null,
+     "desc": "在TerraGroup集团红色银行的桌子上",
+     "images": [
+      "/uploads/infoImg/202609072251235469.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": 65.9,
+     "z": -60.7,
+     "floor": null,
+     "desc": "在TerraGroup集团吧台后面的房间内",
+     "images": [
+      "/uploads/infoImg/202609072251593776.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": 58.1,
+     "z": -74.2,
+     "floor": null,
+     "desc": "在TerraGroup集团监控室的桌子上",
+     "images": [
+      "/uploads/infoImg/202609072252407060.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -40.6,
+     "z": -110.5,
+     "floor": null,
+     "desc": "在TerraGroup集团会议室的桌子上",
+     "images": [
+      "/uploads/infoImg/202609072253184493.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "staff",
+     "x": -27.2,
+     "z": -36.8,
+     "floor": null,
+     "desc": "在白鲸餐厅二楼圆形餐桌右侧的沙发上",
+     "images": [
+      "/uploads/infoImg/202609072253548903.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "staff",
+     "x": -53.8,
+     "z": 61.8,
+     "floor": null,
+     "desc": "在松木酒店一楼的板凳上",
+     "images": [
+      "/uploads/infoImg/202609072254285934.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -69.3,
+     "z": 48.0,
+     "floor": null,
+     "desc": "在松木酒店208房间桌子上",
+     "images": [
+      "/uploads/infoImg/202609072255056380.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "staff",
+     "x": -171.8,
+     "z": 221.9,
+     "floor": "2nd Floor",
+     "desc": "在金融办二楼桌子上",
+     "images": [
+      "/uploads/infoImg/202609072255543481.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": 150.9,
+     "z": 344.0,
+     "floor": null,
+     "desc": "在小康科迪亚一楼的房间内",
+     "images": [
+      "/uploads/infoImg/202609072334521202.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 218.1,
+     "z": 395.6,
+     "floor": "3rd Floor",
+     "desc": "在大康科迪亚三楼8号公寓家庭影院里，需要：Concordia 8号公寓家庭影院钥匙",
+     "images": [
+      "/uploads/infoImg/202609072231319286.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 134.8,
+     "z": 371.9,
+     "floor": null,
+     "desc": "在小康科迪亚二楼房间的地上",
+     "images": [
+      "/uploads/infoImg/202609072233485349.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "finance",
+     "x": 166.5,
+     "z": 165.5,
+     "floor": null,
+     "desc": "在调解室里厕所门口的地上",
+     "images": [
+      "/uploads/infoImg/202609072235018520.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 157.2,
+     "z": 149.3,
+     "floor": null,
+     "desc": "在调解室里的桌子上",
+     "images": [
+      "/uploads/infoImg/202609072236034245.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 145.5,
+     "z": -17.7,
+     "floor": null,
+     "desc": "在TerraGroup集团公寓里的地上，需要：TerraGroup 集团公寓钥匙",
+     "images": [
+      "/uploads/infoImg/202609072237267018.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "finance",
+     "x": 129.5,
+     "z": -58.0,
+     "floor": null,
+     "desc": "在TerraGroup集团公寓往里走门右边的书架上",
+     "images": [
+      "/uploads/infoImg/202609072237592210.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "finance",
+     "x": 71.6,
+     "z": -24.3,
+     "floor": null,
+     "desc": "在TerraGroup大楼红色银行的架子上",
+     "images": [
+      "/uploads/infoImg/202609072238395772.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 59.1,
+     "z": -63.8,
+     "floor": null,
+     "desc": "在TerraGroup大楼的前台",
+     "images": [
+      "/uploads/infoImg/202609072239052398.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 54.5,
+     "z": -74.5,
+     "floor": null,
+     "desc": "在TerraGroup里的监控室书架上",
+     "images": [
+      "/uploads/infoImg/202609072241271151.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -32.5,
+     "z": -112.2,
+     "floor": null,
+     "desc": "在TerraGroup会议室的书架上",
+     "images": [
+      "/uploads/infoImg/202609072240493600.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "finance",
+     "x": -42.2,
+     "z": -45.3,
+     "floor": null,
+     "desc": "在白鲸餐厅二楼的环形桌子上",
+     "images": [
+      "/uploads/infoImg/202609072242217887.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "finance",
+     "x": -90.3,
+     "z": 72.1,
+     "floor": null,
+     "desc": "在松木酒店212房间的桌子上",
+     "images": [
+      "/uploads/infoImg/202609072243079616.webp"
+     ],
+     "floorLabel": "2F"
+    },
+    {
+     "type": "finance",
+     "x": -182.7,
+     "z": 219.6,
+     "floor": null,
+     "desc": "在金融办一楼的书架上，需要：金融办公室小房间钥匙",
+     "images": [
+      "/uploads/infoImg/202609072244152372.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": -163.5,
+     "z": 228.2,
+     "floor": "2nd Floor",
+     "desc": "在金融办二楼的桌子上，需要：金融办公室钥匙",
+     "images": [
+      "/uploads/infoImg/202609072244584490.webp"
+     ]
+    },
+    {
+     "type": "finance",
+     "x": 139.6,
+     "z": 354.7,
+     "floor": null,
+     "desc": "在小康科迪亚一楼的房间内",
+     "images": [
+      "/uploads/infoImg/202609072335547148.webp"
+     ]
+    }
+   ]
+  },
+  {
+   "key": "the-lab",
+   "name": "实验室",
+   "points": [
+    {
+     "type": "medical",
+     "x": -83.7,
+     "z": -434.8,
+     "floor": null,
+     "desc": "在生活区里的实验桌上",
+     "images": [
+      "/uploads/infoImg/202609080005173284.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -105.3,
+     "z": -445.4,
+     "floor": null,
+     "desc": "在生活区里的实验桌上",
+     "images": [
+      "/uploads/infoImg/202609080006225232.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -130.9,
+     "z": -412.1,
+     "floor": null,
+     "desc": "在蓝卡房门口桌子上",
+     "images": [
+      "/uploads/infoImg/202609080006586730.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -135.9,
+     "z": -401.3,
+     "floor": null,
+     "desc": "在蓝卡房里，需要：实验室钥匙卡·蓝",
+     "images": [
+      "/uploads/infoImg/202609080007306866.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -132.4,
+     "z": -397.4,
+     "floor": null,
+     "desc": "在蓝卡房里，需要：实验室钥匙卡·蓝",
+     "images": [
+      "/uploads/infoImg/202609080008043225.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -127.3,
+     "z": -393.3,
+     "floor": null,
+     "desc": "在蓝卡房右侧医疗房里",
+     "images": [
+      "/uploads/infoImg/202609080008473426.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -137.9,
+     "z": -389.7,
+     "floor": null,
+     "desc": "在蓝卡房右侧医疗房里",
+     "images": [
+      "/uploads/infoImg/202609080009175323.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -125.7,
+     "z": -351.5,
+     "floor": null,
+     "desc": "在黑卡房里，需要：实验室钥匙卡·黑",
+     "images": [
+      "/uploads/infoImg/202609080009357590.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -189.7,
+     "z": -363.6,
+     "floor": null,
+     "desc": "在经理办下的实验桌上",
+     "images": [
+      "/uploads/infoImg/202609080010443438.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -132.1,
+     "z": -409.9,
+     "floor": "Second Level",
+     "desc": "在货运电梯撤离点附近的小房间里",
+     "images": [
+      "/uploads/infoImg/202609080011514579.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -119.9,
+     "z": -398.0,
+     "floor": "Second Level",
+     "desc": "在货运电梯撤离点U型房里",
+     "images": [
+      "/uploads/infoImg/202609080012195435.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -121.5,
+     "z": -394.4,
+     "floor": "Second Level",
+     "desc": "在货运电梯撤离点U型房里",
+     "images": [
+      "/uploads/infoImg/202609080012413450.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -138.3,
+     "z": -389.9,
+     "floor": "Second Level",
+     "desc": "在货运电梯撤离点U型房里",
+     "images": [
+      "/uploads/infoImg/202609080013231466.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -113.1,
+     "z": -356.3,
+     "floor": "Second Level",
+     "desc": "在绿卡内廊的医疗床上",
+     "images": [
+      "/uploads/infoImg/202609080014175696.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -132.6,
+     "z": -378.1,
+     "floor": "Second Level",
+     "desc": "在绿卡房里，需要：实验室钥匙卡·绿",
+     "images": [
+      "/uploads/infoImg/202609080014346454.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -120.6,
+     "z": -359.6,
+     "floor": "Second Level",
+     "desc": "在绿卡房里，需要：实验室钥匙卡·绿",
+     "images": [
+      "/uploads/infoImg/202609080015204613.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -233.3,
+     "z": -344.9,
+     "floor": "Second Level",
+     "desc": "在猫雕办桌子上",
+     "images": [
+      "/uploads/infoImg/202609080016198182.webp"
+     ]
+    },
+    {
+     "type": "medical",
+     "x": -239.1,
+     "z": -310.5,
+     "floor": "Second Level",
+     "desc": "在红卡外的餐厅桌子上",
+     "images": [
+      "/uploads/infoImg/202609080016333900.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -116.3,
+     "z": -446.8,
+     "floor": null,
+     "desc": "在生活区房间内，需要：TerraGroup 实验室生活区钥匙卡",
+     "images": [
+      "/uploads/infoImg/202609080018122497.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -167.9,
+     "z": -345.5,
+     "floor": null,
+     "desc": "在经理办下的桌子上",
+     "images": [
+      "/uploads/infoImg/202609080018373182.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -260.5,
+     "z": -344.4,
+     "floor": null,
+     "desc": "在蓝天白云桌子上",
+     "images": [
+      "/uploads/infoImg/202609080019587503.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -140.9,
+     "z": -410.5,
+     "floor": "Second Level",
+     "desc": "在A办桌子上",
+     "images": [
+      "/uploads/infoImg/202609080022571914.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -147.8,
+     "z": -395.5,
+     "floor": "Second Level",
+     "desc": "在A办桌子上",
+     "images": [
+      "/uploads/infoImg/202609080023333461.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -139.4,
+     "z": -279.5,
+     "floor": "Second Level",
+     "desc": "在机房办桌子上",
+     "images": [
+      "/uploads/infoImg/202609080024191046.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -185.5,
+     "z": -410.1,
+     "floor": "Second Level",
+     "desc": "在B办柜子上",
+     "images": [
+      "/uploads/infoImg/202609080025383721.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -196.2,
+     "z": -402.1,
+     "floor": "Second Level",
+     "desc": "在B办桌子上",
+     "images": [
+      "/uploads/infoImg/202609080026087247.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -174.3,
+     "z": -340.5,
+     "floor": "Second Level",
+     "desc": "在经理办会议桌上",
+     "images": [
+      "/uploads/infoImg/202609080026447057.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -162.8,
+     "z": -347.7,
+     "floor": "Second Level",
+     "desc": "在经理办办公室桌上，需要：TerraGroup 实验室经理办公室钥匙",
+     "images": [
+      "/uploads/infoImg/202609080027186641.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -172.7,
+     "z": -281.4,
+     "floor": "Second Level",
+     "desc": "在库房大门拉闸点书架上",
+     "images": [
+      "/uploads/infoImg/202609080028205870.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -216.4,
+     "z": -384.0,
+     "floor": "Second Level",
+     "desc": "在黄卡内，需要：实验室钥匙卡·黄",
+     "images": [
+      "/uploads/infoImg/202609080028354510.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -248.2,
+     "z": -384.1,
+     "floor": "Second Level",
+     "desc": "在停车场大门拉闸点桌子上",
+     "images": [
+      "/uploads/infoImg/202609080029103128.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -254.6,
+     "z": -369.5,
+     "floor": "Second Level",
+     "desc": "在总裁办书架上",
+     "images": [
+      "/uploads/infoImg/202609080029548570.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -271.4,
+     "z": -371.8,
+     "floor": "Second Level",
+     "desc": "在总裁办会议桌上",
+     "images": [
+      "/uploads/infoImg/202609080030193456.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -234.5,
+     "z": -341.4,
+     "floor": "Second Level",
+     "desc": "在猫雕办桌子上",
+     "images": [
+      "/uploads/infoImg/202609080031018826.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -272.7,
+     "z": -325.7,
+     "floor": "Second Level",
+     "desc": "在红紫卡房内的桌子上",
+     "images": [
+      "/uploads/infoImg/202609080031341805.webp"
+     ]
+    },
+    {
+     "type": "staff",
+     "x": -228.3,
+     "z": -306.3,
+     "floor": "Second Level",
+     "desc": "在红卡外的餐厅椅子上",
+     "images": [
+      "/uploads/infoImg/202609080031514252.webp"
+     ]
+    }
+   ]
+  }
+ ]
+}

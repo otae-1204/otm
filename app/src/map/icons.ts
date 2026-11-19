@@ -12,8 +12,36 @@ export function iconUrl(name: string) {
   return `${ICON_DIR}${name}.png`;
 }
 
+/**
+ * 赛季文件在地图上：文件形状的徽章，边框按种类上色（v2-season.png）。
+ * 物品图缩到这么小认不出来，所以地图上不用物品图；物品图只在详情标题和悬停卡片里。
+ */
+const DOC_PATH = "M6.6 2.4h6.9l3.9 3.9v15.3H6.6z";
+const DOC_FOLD = "M13.5 2.4v3.9h3.9";
+
+function docBadge(color: string, size: number): string {
+  const r = Math.round(size * 0.3);
+  const bw = Math.max(1.5, Math.round(size * 0.085));
+  return (
+    `<span class="otm-doc" style="--c:${color};width:${size}px;height:${size}px;` +
+    `border-radius:${r}px;border-width:${bw}px">` +
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" ` +
+    `stroke-linecap="round" stroke-linejoin="round"><path d="${DOC_PATH}"/><path d="${DOC_FOLD}"/></svg></span>`
+  );
+}
+
 /** 标注图标：尺寸随缩放变化，由上层决定；密集时由上层合并。 */
 export function annotationIcon(a: Annotation, size = 26): L.DivIcon {
+  if (a.season) {
+    // 文件徽章不比别的标注小：整张图时也给到 24px
+    const s = Math.max(size, 24);
+    return L.divIcon({
+      className: "otm-anno otm-doc-anno",
+      html: docBadge(a.color ?? "#4da3ff", s),
+      iconSize: [s, s],
+      iconAnchor: [s / 2, s / 2],
+    });
+  }
   return L.divIcon({
     className: "otm-anno",
     html: `<img src="${iconUrl(a.icon)}" width="${size}" height="${size}" alt="" draggable="false"/>`,

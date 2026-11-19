@@ -3,7 +3,7 @@
 // 单独成一个组件，是为了让 App 的其它界面不跟地图绑在一起：
 // 地图这边出错时，错误边界只换掉这一块，预设、筛选、楼层、状态栏都还在。
 
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Annotation } from "../data/annotations";
 import { layerOfPoint } from "../data/floors";
 import type { Translations } from "../data/loader";
@@ -32,17 +32,27 @@ export interface MapViewProps {
   trailOn: boolean;
   stale: boolean;
   ageSeconds: number | null;
+  /** 点到赛季文件（=> 开详情），点别处传 null（=> 关掉详情）。 */
+  onSeason?: (a: Annotation | null) => void;
 }
 
 export function MapView(props: MapViewProps) {
-  const { meta, style, zh, layer, visible, clusterIcon, tileBrightness, position, trail, trailOn, stale, ageSeconds } =
+  const { meta, style, zh, layer, visible, clusterIcon, tileBrightness, position, trail, trailOn, stale, ageSeconds, onSeason } =
     props;
 
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   const [picked, setPicked] = useState<{ a: Annotation; x: number; y: number } | null>(null);
   const [hover, setHover] = useState<ClusterHover | null>(null);
 
+  // 赛季文件点开的是右侧详情；其它标注还是跟着地图走的小卡片（v2-d-doc.png 与 6.3）
+  const seasonRef = useRef(onSeason);
+  seasonRef.current = onSeason;
   const onPick = useCallback((a: Annotation | null) => {
+    seasonRef.current?.(a?.season ? a : null);
+    if (a?.season) {
+      setPicked(null);
+      return;
+    }
     setPicked((prev) => (a === null || prev?.a.key === a.key ? null : { a, x: 0, y: 0 }));
   }, []);
   const onHover = useCallback((h: ClusterHover | null) => setHover(h), []);

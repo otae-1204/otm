@@ -10,6 +10,8 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+# 赛季文件详情里的署名链接要交给系统浏览器；Tauri 的 webview 里 window.open 打不开外部浏览器
+tauri-plugin-opener = "2"
 otm-core = { path = "../../core" }
 
 # 发布版：小一点、快一点。界面在 WebView 里跑，Rust 这边只做监听，优化级别不用拉满。

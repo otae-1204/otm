@@ -173,6 +173,122 @@ async function checkGapFill(page) {
   record("缺瓦片处垫底色", seen && s.filled > 0 && s.clipped === s.filled, `垫了 ${s.filled} 张、裁边 ${s.clipped} 张 ${s.color ?? ""}`);
 }
 
+/** 赛季文件：筛选行、地图图标、详情抽屉、今日计数（6.7.1）。 */
+async function checkSeason(page) {
+  const row = await page.evaluate(() => {
+    const r = [...document.querySelectorAll(".frow")].find((x) => x.textContent.includes("赛季文件"));
+    if (!r) return null;
+    return {
+      n: Number((r.querySelector(".n")?.textContent ?? "0").trim()),
+      off: r.className.includes("off"),
+      subs: [...document.querySelectorAll(".subs2 .sc")].map((s) => s.textContent.trim()),
+    };
+  });
+  record(
+    "筛选里有「赛季文件」一行",
+    !!row && row.n > 0 && !row.off && row.subs.length > 0,
+    row ? `${row.n} 个、子类 ${row.subs.join(" / ")}` : "没有这一行",
+  );
+
+  // 地图上是文件形状的徽章，按种类上色：同一张图里几种必须颜色不同，且和子类标签一致
+  const badges = await page.evaluate(() => {
+    const colors = [...document.querySelectorAll(".otm-doc")].map((d) =>
+      getComputedStyle(d).getPropertyValue("--c").trim().toLowerCase(),
+    );
+    const boxes = [...document.querySelectorAll(".otm-doc")].map((d) => Math.round(d.getBoundingClientRect().height));
+    const chips = [...document.querySelectorAll(".subs2 .sc")].map((s) =>
+      getComputedStyle(s).getPropertyValue("--c").trim().toLowerCase(),
+    );
+    const aside = [...document.querySelectorAll(".otm-anno img")].filter((i) => i.src.includes("season.png")).length;
+    return { count: colors.length, colors: [...new Set(colors)], min: Math.min(...boxes), chips, aside };
+  });
+  record(
+    "地图上是按种类上色的文件徽章",
+    badges.count > 0 && badges.colors.length >= 2 && badges.aside === 0,
+    `${badges.count} 个、颜色 ${badges.colors.join(" ")}、最小 ${badges.min}px`,
+  );
+  record(
+    "子类标签的颜色跟地图上的徽章一致",
+    badges.chips.length === badges.colors.length && badges.chips.every((c) => badges.colors.includes(c)),
+    `标签 ${badges.chips.join(" ")}`,
+  );
+
+  // 点一个徽章 → 右侧详情
+  await page.evaluate(() => {
+    document.querySelector(".otm-doc")?.closest(".leaflet-marker-icon")?.click();
+  });
+  await page.waitForSelector(".drawer", { timeout: 8000 }).catch(() => {});
+  await page
+    .waitForFunction(
+      () => [...document.querySelectorAll(".drawer .phb img")].some((i) => i.naturalWidth > 0),
+      null,
+      { timeout: 8000 },
+    )
+    .catch(() => {});
+  const drawer = await page.evaluate(() => {
+    const d = document.querySelector(".drawer");
+    if (!d) return null;
+    return {
+      rows: d.querySelectorAll(".dp").length,
+      chips: [...d.querySelectorAll(".mc")].length,
+      today: d.querySelector(".dtoday")?.textContent?.replace(/\s+/g, " ").trim() ?? null,
+      photo: [...d.querySelectorAll(".phb img")].some((i) => i.naturalWidth > 0),
+      credit: d.querySelector(".src")?.textContent?.trim() ?? "",
+    };
+  });
+  // 楼层对不上、画在地面层的点：详情里仍显示网站写的楼层
+  const floors = await page.evaluate(() =>
+    [...document.querySelectorAll(".drawer .dp")].map((d) => ({
+      desc: d.querySelector(".dpd")?.textContent ?? "",
+      floor: d.querySelector(".fc")?.textContent?.trim() ?? "",
+    })),
+  );
+  const boiler = floors.find((f) => f.desc.includes("锅炉房二楼"));
+  record(
+    "楼层对不上的点仍显示原楼层",
+    !!boiler && boiler.floor === "2F",
+    boiler ? `${boiler.desc.slice(0, 12)}… → ${boiler.floor}` : "没找到那条",
+  );
+
+  record(
+    "点开赛季文件是详情",
+    !!drawer && drawer.rows > 0 && drawer.chips > 0 && drawer.today !== null && drawer.credit.includes("逃离塔科夫中文Wiki"),
+    drawer ? `刷新点 ${drawer.rows}、地图 ${drawer.chips}、今日 ${drawer.today}、照片${drawer.photo ? "已" : "未"}加载` : "没有抽屉",
+  );
+
+  // 今日 +1，状态栏跟着变；刷新页面后还在（存在本地，跨天归零另有单元测试）
+  const before = await page.evaluate(() => document.querySelector(".status .seas")?.textContent?.replace(/\s+/g, " ").trim() ?? null);
+  await page.evaluate(() => document.querySelectorAll(".cnt2 button")[1]?.click());
+  await page.waitForTimeout(200);
+  const after = await page.evaluate(() => document.querySelector(".status .seas")?.textContent?.replace(/\s+/g, " ").trim() ?? null);
+  const num = (t) => Number((t ?? "").match(/(\d+)\s*\//)?.[1] ?? NaN);
+  record("今日计数 +1 后状态栏跟着变", num(after) === num(before) + 1, `${before} → ${after}`);
+
+  const mode = await page.evaluate(() => (document.querySelector(".status")?.textContent?.includes("赛季") ? "赛季" : null));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector(".status .seas", { timeout: 30000 });
+  // 计数按档案分开记：等回放到同一个档案再看这个档案的数字
+  if (mode) {
+    await page
+      .waitForFunction(() => document.querySelector(".status")?.textContent?.includes("赛季"), null, { timeout: 30000 })
+      .catch(() => {});
+  }
+  const kept = await page.evaluate(() => document.querySelector(".status .seas")?.textContent?.replace(/\s+/g, " ").trim() ?? null);
+  const stored = await page.evaluate(() => localStorage.getItem("otm.season.count"));
+  record(
+    "刷新页面后今日计数还在",
+    num(kept) === num(after),
+    `重新打开是 ${kept}${stored ? "（存的 " + stored + "）" : ""}`,
+  );
+
+  // 状态栏的计数点开也是详情：把刚才 +1 的还回去
+  await page.evaluate(() => document.querySelector(".status .seas")?.click());
+  await page.waitForSelector(".drawer", { timeout: 8000 }).catch(() => {});
+  await page.evaluate(() => document.querySelectorAll(".cnt2 button")[0]?.click());
+  await page.waitForTimeout(150);
+  await page.evaluate(() => document.querySelector(".dback")?.click());
+}
+
 async function clickSeg(page, label) {
   await page.locator(".seg span", { hasText: new RegExp(`^${label}$`) }).first().click();
 }
@@ -224,6 +340,8 @@ try {
     { timeout: 60000 },
   );
   await check(page, "初始（矢量）", "svg");
+  await checkSeason(page);
+  await check(page, "看完赛季详情后（矢量）", "svg");
 
   // 1—6：矢量 / 实景来回切，中间夹着楼层、预设、手动换图
   const trip = async (style) => {

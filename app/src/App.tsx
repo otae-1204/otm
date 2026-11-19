@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { layerName } from "./data/annotations";
 import { layerOfPoint } from "./data/floors";
 import type { MapMeta } from "./data/mapsMeta";
-import { canonicalGameMap, mapChoices, mapName } from "./data/mapsMeta";
+import { mapChoices, mapName } from "./data/mapsMeta";
 import { effectiveFilters, prefsStore, usePrefs } from "./prefs";
-import { useAppState } from "./state";
+import { store, useAppState } from "./state";
+import { trailShowsOn } from "./map/follow";
 import { filterAnnotations, useAnnotations, useData, useMapResolution } from "./map/useMapData";
 import { MapView } from "./map/MapView";
 import { ErrorBoundary } from "./ui/ErrorBoundary";
@@ -15,6 +16,9 @@ import { SettingsSheet } from "./ui/SettingsSheet";
 import { StatusBar } from "./ui/StatusBar";
 import { IconRestart, IconSettings } from "./ui/icons";
 import { mockHandle } from "./events/mock";
+import { SeasonSheet } from "./ui/SeasonSheet";
+import { withSeason } from "./data/season/annotations";
+import { countStore, todayFor, useCounts, useSeason } from "./data/season/store";
 
 /**
  * 楼层条：从上到下高层到低层。地面不是 maps.json 里的一层（底图本身就是地面），
@@ -35,8 +39,15 @@ export function App() {
   const prefs = usePrefs();
   const data = useData();
   const { gameMap, playerMap, meta, upstream } = useMapResolution(state, prefs, data);
-  const set = useAnnotations(data, upstream);
+  const baseSet = useAnnotations(data, upstream);
+  // 赛季文件并进当前这张图的标注（没有赛季包时原样返回）
+  const season = useSeason();
+  const seasonSet = useMemo(() => withSeason(baseSet, season.pack, meta), [baseSet, season.pack, meta]);
+  const set = seasonSet;
+  const counts = useCounts();
+  const today = todayFor(season.pack, state.mode, counts);
 
+  const [doc, setDoc] = useState<{ type: string; index: number } | null>(null);
   const [settings, setSettings] = useState(false);
   const [manualLayer, setManualLayer] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -47,9 +58,19 @@ export function App() {
   }, []);
 
   // 看别的图时不画自己，也不按定位算楼层
-  const onPlayerMap = !playerMap || canonicalGameMap(playerMap) === canonicalGameMap(gameMap);
+  const onPlayerMap = trailShowsOn(playerMap, gameMap);
   const viewPosition = onPlayerMap ? state.position : null;
   const viewTrail = onPlayerMap ? state.trail : [];
+
+  // 换图：不知道玩家在哪张图时（日志没读到），手里这份轨迹属于上一张图，
+  // 换了图就丢掉，不能画到新图上。对局中换图只是看看，轨迹留着。
+  const pickMap = (g: string | null) => {
+    if (!playerMap) {
+      const s = store.get();
+      if (s.trail.length > 0 || s.position) store.set({ ...s, trail: [], position: null });
+    }
+    prefsStore.update((p) => ({ ...p, manualMap: g }));
+  };
 
   const autoLayer = useMemo(() => {
     const p = viewPosition;
@@ -66,11 +87,17 @@ export function App() {
     if (prev >= 0 && autoLayer >= 0 && prev !== autoLayer) setManualLayer(null);
   }, [autoLayer]);
 
-  // 换图后回到自动楼层
+  // 换图后回到自动楼层，赛季详情也收起（它说的是上一张图）
   useEffect(() => {
     setManualLayer(null);
     lastAuto.current = -1;
+    setDoc(null);
   }, [meta?.key]);
+
+  // 换了赛季包，详情里的点位就对不上了，收起
+  useEffect(() => {
+    setDoc(null);
+  }, [season.pack]);
 
   const layer = manualLayer ?? autoLayer;
   const floors = useMemo(() => floorEntries(meta), [meta]);
@@ -94,6 +121,21 @@ export function App() {
     [data.maps, data.mapsMeta, data.zh],
   );
 
+  // 状态栏的文件计数点开详情：先说本图，本图不刷就说第一张刷的图
+  const openSeason = () => {
+    const pack = season.pack;
+    if (!pack) return;
+    const map = (meta ? pack.maps.find((m) => m.key === meta.key) : null) ?? pack.maps[0];
+    const p = map?.points[0];
+    if (p) setDoc({ type: p.type, index: 0 });
+  };
+
+  // 详情里的「刷新地图」按配置 key 切换，换成界面认的游戏内部名
+  const pickMapByKey = (key: string) => {
+    const c = choices.find((x) => x.normalizedName === key);
+    if (c) pickMap(c.gameMap);
+  };
+
   return (
     <div className="app">
       <ErrorBoundary>
@@ -110,6 +152,7 @@ export function App() {
           trailOn={trailOn}
           stale={stale}
           ageSeconds={ageSeconds}
+          onSeason={(a) => setDoc(a?.season ?? null)}
         />
       </ErrorBoundary>
       <PresetChips />
@@ -162,6 +205,7 @@ export function App() {
       ) : null}
       <StatusBar
         state={state}
+        season={today}
         meta={meta}
         gameMap={gameMap}
         mapLabel={mapName(upstream, data.zh, gameMap)}
@@ -170,8 +214,23 @@ export function App() {
         staleSeconds={prefs.staleSeconds}
         ageSeconds={ageSeconds}
         manualMap={prefs.manualMap}
-        onPickMap={(g) => prefsStore.update((p) => ({ ...p, manualMap: g }))}
+        onPickMap={pickMap}
+        onOpenSeason={openSeason}
       />
+      {season.pack && doc ? (
+        <SeasonSheet
+          pack={season.pack}
+          mapKey={meta?.key ?? null}
+          type={doc.type}
+          index={doc.index}
+          pos={onPlayerMap ? state.position : null}
+          mode={state.mode}
+          today={today}
+          onPickMap={pickMapByKey}
+          onBump={(d) => today && countStore.bump(state.mode, d, today.limit)}
+          onClose={() => setDoc(null)}
+        />
+      ) : null}
       {settings ? <SettingsSheet set={set} data={data} mock={mockHandle.current !== null} onClose={() => setSettings(false)} /> : null}
     </div>
   );

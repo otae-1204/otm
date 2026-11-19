@@ -1,6 +1,21 @@
 {
   "identifier": "default",
-  "description": "主窗口的权限：核心事件（监听 otm-event）和窗口自己的那些。",
-  "windows": ["main"],
-  "permissions": ["core:default"]
+  "description": "主窗口的权限：核心事件（监听 otm-event）、窗口自己的那些，以及只放行本站的打开链接。",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://www.eftarkov.com"
+        },
+        {
+          "url": "https://www.eftarkov.com/*"
+        }
+      ]
+    }
+  ]
 }
