@@ -12,6 +12,7 @@
 //! 注意日志里 `TRACE-NetworkGameCreate 0` 到 `6` 这些行也以同样的前缀开头，
 //! 只有带 `profileStatus:` 的那一行才有地图和 RaidMode。
 
+use crate::maps::strip_preset_suffix;
 use crate::time::Timestamp;
 
 /// 从日志里认出的一条有用记录。
@@ -20,7 +21,10 @@ pub enum LogLine {
     /// `Session mode: Pve`
     SessionMode { mode: String },
     /// `scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset`
-    /// 开始加载地图，`map` 是 `rcid` 里第一个点号前面的部分。
+    ///
+    /// 开始加载地图。`map` 是预设名：`rcid` 里第一个点号前面的部分；
+    /// 没有 `rcid` 时是文件名去掉 `.bundle` 和 `_preset`。大小写两版都有
+    /// （1.3.0.1 的 `Shopping_Mall.ScenesPreset.asset`，1.3.0.2 的 `lighthouse.scenespreset.asset`）。
     ScenePreset { map: String },
     /// `TRACE-NetworkGameCreate profileStatus: '... Location: Interchange ... RaidMode: Online ...'`
     ///
@@ -79,17 +83,11 @@ pub fn parse_message(message: &str) -> LogLine {
         return LogLine::Other;
     }
 
-    if message.starts_with("scene preset path:") {
-        if let Some(map) = message
-            .split_whitespace()
-            .find_map(|w| w.strip_prefix("rcid:"))
-        {
-            let map = map.split('.').next().unwrap_or_default();
-            if !map.is_empty() {
-                return LogLine::ScenePreset {
-                    map: map.to_string(),
-                };
-            }
+    if let Some(rest) = message.strip_prefix("scene preset path:") {
+        if let Some(map) = preset_name(rest) {
+            return LogLine::ScenePreset {
+                map: map.to_string(),
+            };
         }
         return LogLine::Other;
     }
@@ -128,6 +126,30 @@ pub fn parse_message(message: &str) -> LogLine {
     }
 
     LogLine::Other
+}
+
+/// 从 `maps/lighthouse_preset.bundle rcid:lighthouse.scenespreset.asset` 里取预设名。
+///
+/// 先看 `rcid:`：点号前面第一段就是预设名，1.3.0.1 写作 `Shopping_Mall`，1.3.0.2 写作
+/// `lighthouse`，大小写不固定。没写 `rcid:` 时退回去看路径里的文件名，去掉 `.bundle`
+/// 和 `_preset`（1.3.0.2 的文件名这么写）——版本再改一次，这一行仍然认得出来。
+fn preset_name(rest: &str) -> Option<&str> {
+    if let Some(word) = rest
+        .split_whitespace()
+        .find_map(|w| w.strip_prefix("rcid:"))
+    {
+        if let Some(name) = word.split('.').next().filter(|name| !name.is_empty()) {
+            return Some(name);
+        }
+    }
+    let path = rest.split_whitespace().next()?;
+    let file = path.rsplit(['/', '\\']).next()?;
+    let stem = match file.rsplit_once('.') {
+        Some((stem, ext)) if ext.eq_ignore_ascii_case("bundle") => stem,
+        _ => file,
+    };
+    let name = strip_preset_suffix(stem);
+    (!name.is_empty()).then_some(name)
 }
 
 /// 从 `Reason:..., Position:(166.309, -0.593, 153.791), ...` 里取坐标。
@@ -206,6 +228,55 @@ mod tests {
                 map: "Shopping_Mall".into()
             }
         );
+    }
+
+    /// 1.3.0.2 的写法：文件名带 `_preset`，`rcid` 全小写、后缀也全小写。
+    #[test]
+    fn scene_preset_in_the_new_spelling() {
+        assert_eq!(
+            kind("2026-11-17 22:25:38.150|1.3.0.2.48779|Info|application|scene preset path:maps/lighthouse_preset.bundle rcid:lighthouse.scenespreset.asset"),
+            LogLine::ScenePreset {
+                map: "lighthouse".into()
+            }
+        );
+        // 同一个版本里也有大写开头的预设名。
+        assert_eq!(
+            kind("2026-11-17 22:11:29.266|1.3.0.2.48779|Info|application|scene preset path:maps/rezerv_base_preset.bundle rcid:Rezerv_Base.scenespreset.asset"),
+            LogLine::ScenePreset {
+                map: "Rezerv_Base".into()
+            }
+        );
+    }
+
+    /// 没有 `rcid:` 时看文件名：去掉 `.bundle` 和 `_preset`。
+    #[test]
+    fn scene_preset_falls_back_to_the_file_name() {
+        assert_eq!(
+            kind("2026-11-17 22:25:38.150|1.3.0.2.48779|Info|application|scene preset path:maps/lighthouse_preset.bundle"),
+            LogLine::ScenePreset {
+                map: "lighthouse".into()
+            }
+        );
+        assert_eq!(
+            kind("2026-11-12 20:15:03.031|1.3.0.1.48558|Info|application|scene preset path:maps/shopping_mall.bundle"),
+            LogLine::ScenePreset {
+                map: "shopping_mall".into()
+            }
+        );
+        // 路径用正斜杠还是反斜杠都行。
+        assert_eq!(
+            kind("2026-11-17 22:25:38.150|1.3.0.2.48779|Info|application|scene preset path:maps\\woods.BUNDLE"),
+            LogLine::ScenePreset {
+                map: "woods".into()
+            }
+        );
+        // 什么也没给：不认。
+        for junk in [
+            "2026-11-17 22:25:38.150|1.3.0.2.48779|Info|application|scene preset path:",
+            "2026-11-17 22:25:38.150|1.3.0.2.48779|Info|application|scene preset path:maps/_preset.bundle",
+        ] {
+            assert_eq!(kind(junk), LogLine::Other, "{junk}");
+        }
     }
 
     #[test]

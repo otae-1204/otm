@@ -198,12 +198,26 @@ impl State {
 
                 match self.raid.as_mut() {
                     Some(raid) => {
-                        // 以进局记录为准。
+                        // 以进局记录为准。名字真变了（加载时报的是对照表里没有的预设名）
+                        // 就补发一次加载，界面立刻切过去，不用等到 `GameStarted`。
+                        // 已经开打的局不再补发：界面收到加载会清掉本局轨迹。
+                        let corrected = !raid.map.eq_ignore_ascii_case(map) && !raid.started;
+                        let events = if corrected {
+                            vec![Event::RaidLoading {
+                                time,
+                                map: map.clone(),
+                            }]
+                        } else {
+                            Vec::new()
+                        };
                         raid.map = map.clone();
                         raid.raid_mode = raid_mode.or(raid.raid_mode);
+                        events
                     }
                     None => {
-                        // 没有加载记录就进局（日志被截断过）：从这里开始算新的一局。
+                        // 没有加载记录就进局：日志被截断过，或者游戏改了加载那一行的写法，
+                        // 这一条没认出来。进局记录的 `Location` 本身就是地点名，够切图了，
+                        // 所以当一次加载报出去，界面不用等到 `GameStarted`。
                         self.clear_positions();
                         self.raid = Some(RaidState {
                             map: map.clone(),
@@ -213,9 +227,12 @@ impl State {
                             started_at: None,
                             raid_mode,
                         });
+                        vec![Event::RaidLoading {
+                            time,
+                            map: map.clone(),
+                        }]
                     }
                 }
-                Vec::new()
             }
 
             LogLine::GameStarted => {
@@ -699,6 +716,142 @@ mod tests {
             }]
         );
         // 两边名字一致，不需要补表。
+        assert_eq!(state.map_mismatches(), &[]);
+    }
+
+    /// 加载那一行没认出来（版本改了写法、或者日志从中间开始）：进局记录里的
+    /// `Location` 本身就是地点名，从它开始算新的一局，并且当一次加载报出去，
+    /// 界面不用等到 `GameStarted` 才切图。
+    #[test]
+    fn the_raid_record_alone_starts_the_raid() {
+        let mut state = State::new();
+        let events = feed_log(
+            &mut state,
+            &line(
+                "2026-11-17 22:26:18.483",
+                &game_create_at(PMC, "Online", "Lighthouse"),
+            ),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidLoading {
+                time: ts("2026-11-17T22:26:18.483"),
+                map: "Lighthouse".into()
+            }]
+        );
+
+        // 再来一条同一局的进局记录：不重复报。
+        let events = feed_log(
+            &mut state,
+            &line(
+                "2026-11-17 22:26:19.000",
+                &game_create_at(PMC, "Online", "Lighthouse"),
+            ),
+        );
+        assert_eq!(events, vec![]);
+
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-17 22:27:46.642", "GameStarted:1(1)"),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidStarted {
+                time: ts("2026-11-17T22:27:46.642"),
+                map: "Lighthouse".into(),
+                scav: false,
+                raid_mode: RaidMode::Online,
+            }]
+        );
+    }
+
+    /// 加载时报的是对照表里没有的预设名：进局记录把名字改正过来时补发一次加载，
+    /// 界面在 `GameStarted` 之前就切过去（以前要等到开局，晚一到两分钟）。
+    #[test]
+    fn a_corrected_name_is_reported_before_the_raid_starts() {
+        let mut state = State::new();
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-15 17:53:17.104", &scene("Some_New_Preset")),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidLoading {
+                time: ts("2026-11-15T17:53:17.104"),
+                map: "Some_New_Preset".into()
+            }]
+        );
+
+        // 进局记录说这张图叫 TarkovStreets：改过来，并且补发一次加载。
+        let events = feed_log(
+            &mut state,
+            &line(
+                "2026-11-15 17:58:38.249",
+                &game_create_at(PMC, "Online", "TarkovStreets"),
+            ),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidLoading {
+                time: ts("2026-11-15T17:58:38.249"),
+                map: "TarkovStreets".into()
+            }]
+        );
+
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-15 18:00:40.493", "GameStarted:1(1)"),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidStarted {
+                time: ts("2026-11-15T18:00:40.493"),
+                map: "TarkovStreets".into(),
+                scav: false,
+                raid_mode: RaidMode::Online,
+            }]
+        );
+
+        // 开打之后再来的进局记录：名字照改，但不补发加载（界面收到加载会清掉本局轨迹）。
+        let events = feed_log(
+            &mut state,
+            &line(
+                "2026-11-15 18:00:41.000",
+                &game_create_at(PMC, "Online", "Lighthouse"),
+            ),
+        );
+        assert_eq!(events, vec![]);
+        let snap = state.snapshot();
+        assert_eq!(
+            snap.raid.as_ref().map(|r| r.map.as_str()),
+            Some("Lighthouse")
+        );
+        assert_eq!(snap.trail.len(), 0);
+    }
+
+    /// 加载那一行已经报过（预设名换成了地点名）时，进局记录不能再报一次加载。
+    #[test]
+    fn the_raid_record_does_not_repeat_the_loading_event() {
+        let mut state = State::new();
+        let events = feed_log(
+            &mut state,
+            &line("2026-11-17 22:25:38.150", &scene("lighthouse")),
+        );
+        assert_eq!(
+            events,
+            vec![Event::RaidLoading {
+                time: ts("2026-11-17T22:25:38.150"),
+                map: "Lighthouse".into()
+            }]
+        );
+        let events = feed_log(
+            &mut state,
+            &line(
+                "2026-11-17 22:26:18.483",
+                &game_create_at(PMC, "Online", "Lighthouse"),
+            ),
+        );
+        assert_eq!(events, vec![]);
         assert_eq!(state.map_mismatches(), &[]);
     }
 

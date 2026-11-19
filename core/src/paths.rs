@@ -212,8 +212,19 @@ pub fn latest_log_dir(logs_dir: &Path) -> Option<PathBuf> {
 
 /// 一个日志目录里的 `application` 日志文件。
 ///
-/// 优先 `application.log`；没有时退而找名字以 `application` 开头的文件，取名字最大的那个
-/// （日志轮换后带日期的那种，`read_dir` 的顺序不保证）。
+/// 优先 `application.log`；没有时在所有 `application` 日志里取名字最大的那个
+/// （日志轮换出来的 `application_001.log` 比 `application_000.log` 新，
+/// `read_dir` 的顺序不保证，所以按名字排）。
+///
+/// 实机上这两种名字都出现过：
+///
+/// ```text
+/// application.log
+/// log_2026.11.15_17-46-54_1.3.0.2.48779 application_000.log   ← 带目录名前缀
+/// ```
+///
+/// 名字前面带什么不管，`application` 得是完整的一个词：`backend_000.log`、
+/// `network-messages_000.log` 这些同目录下的别的日志不能认成它。
 pub fn application_log_file(log_dir: &Path) -> Option<PathBuf> {
     let exact = log_dir.join("application.log");
     if exact.is_file() {
@@ -225,13 +236,36 @@ pub fn application_log_file(log_dir: &Path) -> Option<PathBuf> {
             continue;
         }
         let name = entry.file_name();
-        if name.to_string_lossy().starts_with("application")
-            && found.as_ref().is_none_or(|f| name > *f)
-        {
+        if is_application_log(&name.to_string_lossy()) && found.as_ref().is_none_or(|f| name > *f) {
             found = Some(name);
         }
     }
     found.map(|n| log_dir.join(n))
+}
+
+/// 这个文件名是不是 `application` 日志。
+///
+/// `application` 要在词首（开头或空格之后），后面紧跟 `.log`、`_` 或字符串结尾。
+/// 所以 `application.log`、`<目录名> application_000.log`、`application_2026.11.14.log`
+/// 都算，`my-application-notes.txt`、`backend_000.log` 不算。
+fn is_application_log(name: &str) -> bool {
+    const WORD: &str = "application";
+    let lower = name.to_ascii_lowercase();
+    if !lower.ends_with(".log") {
+        return false;
+    }
+    let mut from = 0;
+    while let Some(pos) = lower[from..].find(WORD) {
+        let at = from + pos;
+        let after = &lower[at + WORD.len()..];
+        let before_ok = at == 0 || lower.as_bytes()[at - 1] == b' ';
+        let after_ok = after.is_empty() || after.starts_with('.') || after.starts_with('_');
+        if before_ok && after_ok {
+            return true;
+        }
+        from = at + WORD.len();
+    }
+    false
 }
 
 /// 去掉路径里的 `.` 和多余的结尾分隔符，不碰文件系统。
@@ -320,6 +354,64 @@ mod tests {
             root.join("application_2026.11.15.log")
         );
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// 实机上的名字带目录名前缀：`log_.../2026.11.15_17-46-53_1.3.0.2.48779 application_000.log`。
+    /// 按 `starts_with("application")` 找的话一个都找不到，日志就整个读不到了。
+    #[test]
+    fn finds_the_prefixed_application_log_the_game_writes() {
+        let root = std::env::temp_dir().join(format!("otm-app-prefixed-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        for name in [
+            "2026.11.15_17-46-53_1.3.0.2.48779 application_000.log",
+            "2026.11.15_17-46-53_1.3.0.2.48779 backend_000.log",
+            "2026.11.15_17-46-53_1.3.0.2.48779 network-messages_000.log",
+            "2026.11.15_17-46-53_1.3.0.2.48779 errors_000.log",
+        ] {
+            fs::write(root.join(name), "x").unwrap();
+        }
+        assert_eq!(
+            application_log_file(&root).unwrap(),
+            root.join("2026.11.15_17-46-53_1.3.0.2.48779 application_000.log")
+        );
+
+        // 轮换成 001 时跟新的那个。
+        fs::write(
+            root.join("2026.11.15_17-46-53_1.3.0.2.48779 application_001.log"),
+            "x",
+        )
+        .unwrap();
+        assert_eq!(
+            application_log_file(&root).unwrap(),
+            root.join("2026.11.15_17-46-53_1.3.0.2.48779 application_001.log")
+        );
+
+        // 有 application.log 时还是先认它。
+        fs::write(root.join("application.log"), "x").unwrap();
+        assert_eq!(
+            application_log_file(&root).unwrap(),
+            root.join("application.log")
+        );
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn application_log_name_is_a_whole_word() {
+        assert!(is_application_log("application.log"));
+        assert!(is_application_log("APPLICATION.LOG"));
+        assert!(is_application_log(
+            "2026.11.15_17-46-53_1.3.0.2.48779 application_000.log"
+        ));
+        assert!(is_application_log("application_2026.11.14.log"));
+        // 别的日志、别的程序的文件都不算。
+        assert!(!is_application_log(
+            "2026.11.15_17-46-53_1.3.0.2.48779 backend_000.log"
+        ));
+        assert!(!is_application_log("network-messages_000.log"));
+        assert!(!is_application_log("my-application-notes.log"));
+        assert!(!is_application_log("application.log.bak"));
+        assert!(!is_application_log("applications_000.log"));
     }
 
     #[test]

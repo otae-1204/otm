@@ -27,6 +27,12 @@ fn replay(log: &str, shots: &str) -> (Vec<Event>, State) {
     otm_core::state::replay(&log_text, &shots_text)
 }
 
+/// 只跑一份日志（没有截图）。
+fn replay_log(log: &str) -> (Vec<Event>, State) {
+    let log_text = std::fs::read_to_string(fixture(log)).unwrap();
+    otm_core::state::replay(&log_text, "")
+}
+
 /// 只要不是定位的事件。
 fn milestones(events: &[Event]) -> Vec<Event> {
     events
@@ -399,4 +405,63 @@ fn event_types_are_the_ones_in_the_contract() {
             "position".to_string(),
         ])
     );
+}
+
+/// 游戏 1.3.0.2 把加载那一行改了写法：全小写，文件名后面多了 `_preset`。
+///
+/// 真实日志摘录（已脱敏），`D:/Battlestate Games/EFT/Logs/log_2026.11.17_22-10-01_1.3.0.2.48779`：
+///
+/// ```text
+/// scene preset path:maps/rezerv_base_preset.bundle rcid:Rezerv_Base.scenespreset.asset
+/// scene preset path:maps/lighthouse_preset.bundle rcid:lighthouse.scenespreset.asset
+/// ```
+///
+/// 三局都要认出来，报的是地点名（`RezervBase`、`Lighthouse`），不是预设名。
+#[test]
+fn the_1302_preset_spelling_still_switches_the_map() {
+    let (events, state) = replay_log("pvpseason_1302.application.log");
+
+    let loading: Vec<&str> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::RaidLoading { map, .. } => Some(map.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(loading, vec!["RezervBase", "Lighthouse"]);
+
+    let started: Vec<&str> = events
+        .iter()
+        .filter_map(|e| match e {
+            Event::RaidStarted { map, scav, .. } => {
+                assert!(!scav, "这一局是 PMC");
+                Some(map.as_str())
+            }
+            _ => None,
+        })
+        .collect();
+    assert_eq!(started, vec!["RezervBase", "Lighthouse"]);
+
+    assert_eq!(
+        events
+            .iter()
+            .filter(|e| matches!(e, Event::RaidEnded { .. }))
+            .count(),
+        2,
+        "{events:?}"
+    );
+    // 进局记录里的 Location 和加载时给出的名字一致，不该记下缺口。
+    assert!(
+        state.map_mismatches().is_empty(),
+        "{:?}",
+        state.map_mismatches()
+    );
+    // 两局之间的定位都算得出来。
+    assert!(events.iter().any(|e| matches!(
+        e,
+        Event::Position {
+            source: PositionSource::Log,
+            ..
+        }
+    )));
 }

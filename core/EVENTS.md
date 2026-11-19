@@ -44,9 +44,16 @@
   `2026-11-12[20-18]_-232.18, 21.77, 16.87_0.00034, 0.97530, 0.00399, 0.22086_5.20 (0).png`
   依次是：日期和时分、坐标 x y z、四元数 x y z w、一个数字。菜单里的截图没有坐标部分，忽略。
 - 游戏日志目录 `Logs/log_<日期>_<版本>/` 里的 `application` 日志。每次启动游戏新建一个目录。
+  文件名不一定是 `application.log`：实机上带目录名前缀，叫
+  `<日期>_<时分秒>_<版本> application_000.log`，轮换后是 `_001`、`_002`。
   - `Session mode: Pve`
-  - `scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset`：开始加载，`rcid` 里点号前面是地图名
+  - `scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset`：开始加载，`rcid` 里点号前面是地图名。
+    1.3.0.2 起写法变成全小写、文件名带 `_preset`（`maps/lighthouse_preset.bundle rcid:lighthouse.scenespreset.asset`），
+    两版都认，大小写不敏感；没有 `rcid` 时用文件名（去掉 `.bundle` 和 `_preset`）。
   - `TRACE-NetworkGameCreate profileStatus: 'Profileid: <24 位十六进制>, Status: Busy, RaidMode: Online, Ip: ..., Port: ..., Location: Interchange, ...'`
+    这一行的 `Location` 就是地点名。加载那一行没认出来时（版本又改了写法、日志从中间开始），
+    核心用它当一次 `raid_loading` 报出去；名字和加载时报的不一样时（预设名不在对照表里）
+    也在开局前补发一次 `raid_loading`。两种情况界面都不用等到 `GameStarted` 才切图。
   - `GameStarted:...`
   - `Reason:PacketsQueue, Position:(166.309, -0.593, 153.791), SpeedLimit:...`：对局中偶尔出现的一条位置，没有朝向
   - `Disposing BEClient`：`GameStarted` 之后出现，表示离开对局

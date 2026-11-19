@@ -1,0 +1,19 @@
+2026-11-17 22:10:19.174|1.3.0.2.48779|Info|application|Session mode: PvpSeason
+2026-11-17 22:11:05.949|1.3.0.2.48779|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-17 22:11:25.527|1.3.0.2.48779|Info|application|Disposing BEClient
+2026-11-17 22:11:29.266|1.3.0.2.48779|Info|application|scene preset path:maps/rezerv_base_preset.bundle rcid:Rezerv_Base.scenespreset.asset
+2026-11-17 22:12:13.896|1.3.0.2.48779|Debug|application|TRACE-NetworkGameCreate profileStatus: 'Profileid: aaaaaaaaaaaaaaaaaaaaf17e, Status: Busy, RaidMode: Online, Ip: 10.0.0.1, Port: 17011, Location: RezervBase, Sid: sn-test, GameMode: deathmatch, shortId: ABCDEF'
+2026-11-17 22:14:11.959|1.3.0.2.48779|Info|application|GameStarted:145.14(145.14) real:162.73(162.73) diff:17.58
+2026-11-17 22:14:13.987|1.3.0.2.48779|Info|application|Reason:PacketsQueue, Position:(86.823, -6.770, -33.847), SpeedLimit:0.6833333, CurrentState:Idle, StrengthSummaryLevel:11, WalkSpeedLimit:1
+2026-11-17 22:14:14.874|1.3.0.2.48779|Info|application|Reason:PacketsQueue, Position:(86.823, -6.770, -33.847), SpeedLimit:0.6833333, CurrentState:Idle, StrengthSummaryLevel:11, WalkSpeedLimit:1
+2026-11-17 22:20:00.492|1.3.0.2.48779|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-17 22:20:04.070|1.3.0.2.48779|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-17 22:20:24.648|1.3.0.2.48779|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-17 22:20:33.016|1.3.0.2.48779|Info|application|Disposing BEClient
+2026-11-17 22:25:38.150|1.3.0.2.48779|Info|application|scene preset path:maps/lighthouse_preset.bundle rcid:lighthouse.scenespreset.asset
+2026-11-17 22:26:18.483|1.3.0.2.48779|Debug|application|TRACE-NetworkGameCreate profileStatus: 'Profileid: aaaaaaaaaaaaaaaaaaaaf17e, Status: Busy, RaidMode: Online, Ip: 10.0.0.1, Port: 17009, Location: Lighthouse, Sid: sn-test, GameMode: deathmatch, shortId: ABCDEF'
+2026-11-17 22:27:46.642|1.3.0.2.48779|Info|application|GameStarted:105.14(3.19) real:132.16(6.2) diff:27.02
+2026-11-17 22:39:11.290|1.3.0.2.48779|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-17 22:39:14.821|1.3.0.2.48779|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-17 22:39:45.273|1.3.0.2.48779|Info|application|PrepareSelectedProfileLocally ProfileId:aaaaaaaaaaaaaaaaaaaaf17e AccountId:1000000
+2026-11-17 22:39:53.325|1.3.0.2.48779|Info|application|Disposing BEClient

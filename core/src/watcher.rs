@@ -214,6 +214,8 @@ struct WatchLoop {
     map_mismatches: Arc<Mutex<Vec<(String, String)>>>,
     /// 已经转过去多少条。
     published_mismatches: usize,
+    /// 是否已经跟过至少一个日志文件。`LogStart::Now` 只对启动时那份生效。
+    read_any: bool,
 }
 
 impl WatchLoop {
@@ -234,6 +236,7 @@ impl WatchLoop {
             reported: None,
             map_mismatches,
             published_mismatches: 0,
+            read_any: false,
         }
     }
 
@@ -321,30 +324,35 @@ impl WatchLoop {
             }]);
         }
 
-        // 日志目录每次都核对：目录先建出来、application.log 晚一步出现的情况也得跟上。
-        let current = self
-            .tail
-            .path()
-            .and_then(|p| p.parent())
-            .map(Path::to_path_buf);
-        if current == dirs.log_dir {
-            return;
-        }
-        // 旧目录里可能还有没读完的（游戏正在退出）。
-        self.poll_log();
+        // 跟到哪个文件每次都核对：目录先建出来、日志文件晚一步出现、日志中途轮换，
+        // 这三种情况都得跟上。
         let Some(new_log_dir) = dirs.log_dir.clone() else {
             return;
         };
         let Some(file) = paths::application_log_file(&new_log_dir) else {
             return;
         };
-        let time = Timestamp::now_local();
-        let ended = lock(&self.state).start_game_session(time);
-        self.emit(ended);
+        if self.tail.path() == Some(file.as_path()) {
+            return;
+        }
+        // 旧文件里可能还有没读完的（游戏正在退出、或者刚要轮换）。
+        self.poll_log();
+
+        // 换了目录是游戏重启：上一局到此为止，状态机从头开始。
+        // 同一个目录里换了文件只是日志轮换，还是这一局，不能把轨迹清掉。
+        let same_dir = self.tail.path().and_then(Path::parent) == Some(new_log_dir.as_path());
+        if !same_dir {
+            let time = Timestamp::now_local();
+            let ended = lock(&self.state).start_game_session(time);
+            self.emit(ended);
+        }
         self.tail.switch_to(&file);
-        if self.options.start == LogStart::Now {
+        // 「只读新写的」只对启动时那份日志说；之后换的文件都得从头读，
+        // 否则游戏中途重启会把新一局的加载记录整个漏掉。
+        if self.options.start == LogStart::Now && !self.read_any {
             self.tail.skip_to_end();
         }
+        self.read_any = true;
         self.poll_log();
     }
 
@@ -714,6 +722,197 @@ mod tests {
                 }
             )),
             "{events:?}"
+        );
+
+        w.stop();
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// 实机上的日志文件不叫 `application.log`，而是带目录名前缀：
+    /// `2026.11.15_17-46-53_1.3.0.2.48779 application_000.log`。
+    ///
+    /// 只认 `application.log` 时，实机上一个日志事件都读不出来：地图不跟着对局切，
+    /// 轨迹也不会在新的一局开始时清掉。
+    #[test]
+    fn reads_the_log_file_the_game_really_names() {
+        let root = tmp_root("real-name");
+        let shots = root.join("Escape from Tarkov").join("Screenshots");
+        fs::create_dir_all(&shots).unwrap();
+        let log_dir = root
+            .join("Logs")
+            .join("log_2026.11.17_22-10-01_1.3.0.2.48779");
+        fs::create_dir_all(&log_dir).unwrap();
+
+        let mut text = String::new();
+        text += &line("2026-11-17 22:10:19.174", "Session mode: PvpSeason");
+        text += &line(
+            "2026-11-17 22:11:29.266",
+            "scene preset path:maps/rezerv_base_preset.bundle rcid:Rezerv_Base.scenespreset.asset",
+        );
+        text += &line(
+            "2026-11-17 22:12:13.896",
+            "TRACE-NetworkGameCreate profileStatus: 'Profileid: aaaaaaaaaaaaaaaaaaaaf17e, Status: Busy, RaidMode: Online, Ip: 1.2.3.4, Port: 17011, Location: RezervBase, Sid: x, GameMode: deathmatch, shortId: y'",
+        );
+        text += &line(
+            "2026-11-17 22:14:11.959",
+            "GameStarted:145.14(145.14) real:162.73(162.73) diff:17.58",
+        );
+        // 同目录下还有别的日志，不能被当成 application 日志。
+        fs::write(
+            log_dir.join("2026.11.17_22-10-01_1.3.0.2.48779 backend_000.log"),
+            "2026-11-17 22:10:19.174|1.3.0.2.48779|Info|backend|hello\r\n",
+        )
+        .unwrap();
+        fs::write(
+            log_dir.join("2026.11.17_22-10-01_1.3.0.2.48779 application_000.log"),
+            text,
+        )
+        .unwrap();
+
+        let w = Watcher::start(
+            WatchOptions::default()
+                .game_dir(&root)
+                .screenshot_dir(&shots)
+                .poll_interval(Duration::from_millis(50)),
+        );
+        let events = collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::RaidStarted { .. })),
+            Duration::from_secs(5),
+        );
+        assert!(
+            events.iter().any(|e| matches!(
+                e,
+                Event::Session {
+                    mode: Mode::PvpSeason,
+                    ..
+                }
+            )),
+            "{events:?}"
+        );
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, Event::RaidLoading { map, .. } if map == "RezervBase")),
+            "带前缀的日志文件要读得到：{events:?}"
+        );
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, Event::RaidStarted { map, .. } if map == "RezervBase")),
+            "{events:?}"
+        );
+
+        // 之后的追加也要跟得上。
+        let mut f = fs::OpenOptions::new()
+            .append(true)
+            .open(log_dir.join("2026.11.17_22-10-01_1.3.0.2.48779 application_000.log"))
+            .unwrap();
+        write!(
+            f,
+            "{}",
+            line(
+                "2026-11-17 22:14:13.987",
+                "Reason:PacketsQueue, Position:(86.823, -6.77, -33.847), SpeedLimit:Info"
+            )
+        )
+        .unwrap();
+        drop(f);
+        let events = collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::Position { .. })),
+            Duration::from_secs(5),
+        );
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, Event::Position { x, .. } if (*x - 86.823).abs() < 1e-6)),
+            "{events:?}"
+        );
+
+        w.stop();
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// 同一局里日志轮换成 `application_001.log`：还是这一局，
+    /// 不能当成游戏重启去清轨迹。
+    #[test]
+    fn rotation_inside_a_log_dir_keeps_the_raid() {
+        let root = tmp_root("rotate");
+        let shots = root.join("Escape from Tarkov").join("Screenshots");
+        fs::create_dir_all(&shots).unwrap();
+        let log_dir = root
+            .join("Logs")
+            .join("log_2026.11.15_17-46-54_1.3.0.2.48779");
+        fs::create_dir_all(&log_dir).unwrap();
+        let prefix = "2026.11.15_17-46-54_1.3.0.2.48779 ";
+
+        let mut text = String::new();
+        text += &line(
+            "2026-11-15 17:53:17.104",
+            "scene preset path:maps/customs_preset.bundle rcid:bigmap.scenespreset.asset",
+        );
+        text += &line(
+            "2026-11-15 18:00:40.493",
+            "GameStarted:293.32(293.32) real:315.92(315.92) diff:22.6",
+        );
+        text += &line(
+            "2026-11-15 18:00:41.000",
+            "Reason:PacketsQueue, Position:(10.0, 1.0, 10.0), SpeedLimit:Info",
+        );
+        fs::write(log_dir.join(format!("{prefix}application_000.log")), text).unwrap();
+
+        let w = Watcher::start(
+            WatchOptions::default()
+                .game_dir(&root)
+                .screenshot_dir(&shots)
+                .poll_interval(Duration::from_millis(50)),
+        );
+        let events = collect(
+            &w,
+            |evs| evs.iter().any(|e| matches!(e, Event::RaidStarted { .. })),
+            Duration::from_secs(5),
+        );
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, Event::RaidStarted { .. })),
+            "{events:?}"
+        );
+        let before = w.snapshot().trail.len();
+        assert_eq!(before, 1, "日志里那一条定位应该已经在轨迹里");
+
+        // 轮换：新文件接在后面写。
+        let mut text = String::new();
+        text += &line(
+            "2026-11-15 18:00:42.000",
+            "Reason:PacketsQueue, Position:(20.0, 1.0, 20.0), SpeedLimit:Info",
+        );
+        fs::write(log_dir.join(format!("{prefix}application_001.log")), text).unwrap();
+
+        let events = collect(
+            &w,
+            |evs| {
+                evs.iter()
+                    .any(|e| matches!(e, Event::Position { x, .. } if (*x - 20.0).abs() < 1e-6))
+            },
+            Duration::from_secs(5),
+        );
+        assert!(
+            !events.iter().any(|e| matches!(e, Event::RaidEnded { .. })),
+            "轮换不是新的一局，不该报 raid_ended：{events:?}"
+        );
+        let snapshot = w.snapshot();
+        assert_eq!(
+            snapshot.trail.len(),
+            2,
+            "轮换前的轨迹要留着：{:?}",
+            snapshot.trail
+        );
+        assert!(
+            snapshot.raid.as_ref().is_some_and(|r| r.started),
+            "{:?}",
+            snapshot.raid
         );
 
         w.stop();
