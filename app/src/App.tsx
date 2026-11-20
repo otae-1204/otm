@@ -113,11 +113,13 @@ export function App() {
 
   const layer = manualLayer ?? autoLayer;
   const floors = useMemo(() => floorEntries(meta), [meta]);
+  // 楼层条选了「全部」：所有楼层的标注都画，底图仍然是地面层
+  const allFloors = prefs.floorAll;
 
   // 标注与外框
   const visible = useMemo(
-    () => filterAnnotations(set, prefs, meta, layer),
-    [set, prefs, meta, layer],
+    () => filterAnnotations(set, prefs, meta, allFloors ? "all" : layer),
+    [set, prefs, meta, layer, allFloors],
   );
 
   // 自己与轨迹
@@ -174,7 +176,7 @@ export function App() {
           meta={meta}
           style={style}
           zh={data.zh}
-          layer={layer}
+          layer={allFloors ? "all" : layer}
           visible={visible}
           clusterIcon={prefs.clusterIcon}
           tileBrightness={prefs.tileBrightness}
@@ -222,12 +224,23 @@ export function App() {
         </button>
       </div>
       {floors.length > 0 ? (
-        <div className="floors">
+        <div className="floors" data-anno={visible.length} data-all={allFloors ? "1" : "0"}>
+          <button
+            className={`fl all${allFloors ? " on" : ""}`}
+            onClick={() => prefsStore.update((p) => ({ ...p, floorAll: true }))}
+          >
+            全部
+          </button>
+          <i className="flsep" />
           {floors.map((f) => (
             <button
               key={f.index}
-              className={`fl${f.index === layer ? " on" : ""}${f.index === autoLayer ? " auto" : ""}`}
-              onClick={() => setManualLayer(f.index === autoLayer ? null : f.index)}
+              className={`fl${!allFloors && f.index === layer ? " on" : ""}${f.index === autoLayer ? " auto" : ""}`}
+              onClick={() => {
+                // 点某一层就退出「全部」，回到原来的自动/手动逻辑
+                prefsStore.update((p) => ({ ...p, floorAll: false }));
+                setManualLayer(f.index === autoLayer ? null : f.index);
+              }}
             >
               {f.label}
             </button>

@@ -115,6 +115,11 @@ export interface Prefs {
   subOverrides: SubFilters;
   /** 手动指定的地图（游戏内部名）；null 表示跟着对局走。 */
   manualMap: string | null;
+  /**
+   * 楼层条选了「全部」：所有楼层的标注都画出来，不在地面的带楼层标签。
+   * 记在偏好里，换局、重开都保持，点某一层就关掉（见 DESIGN 6.4）。
+   */
+  floorAll: boolean;
   baseStyle: "svg" | "tile";
   /** 实景底图的亮度（1 = 原图）。 */
   tileBrightness: number;
@@ -187,6 +192,7 @@ function defaultPrefs(): Prefs {
     overrides: {},
     subOverrides: {},
     manualMap: null,
+    floorAll: false,
     baseStyle: "svg",
     tileBrightness: DEFAULT_TILE_BRIGHTNESS,
     staleSeconds: 60,
@@ -213,8 +219,9 @@ const KEY = PREFS_KEY;
  * 3：加了合并标注的图标选项；
  * 4：加了赛季文件这一大类，内置预设默认打开它。
  * 5：加了叠加层（开关、外观、热键），默认还是关着。
+ * 6：楼层条加了「全部」，选过就记住。
  */
-const VERSION = 5;
+const VERSION = 6;
 
 /** 把任意存下来的预设整理成当前格式，认不出的字段丢掉。 */
 function normalizePreset(raw: unknown): Preset | null {
@@ -308,6 +315,8 @@ function parseStored(raw: string | null): Prefs {
     overrides: oldVersion < 2 ? {} : (stored.overrides ?? {}),
     subOverrides: oldVersion < 2 ? {} : (stored.subOverrides ?? {}),
     manualMap: typeof stored.manualMap === "string" ? stored.manualMap : null,
+    // 新加的开关，旧数据里没有就是关着
+    floorAll: stored.floorAll === true,
     baseStyle: stored.baseStyle === "tile" ? "tile" : "svg",
     tileBrightness:
       typeof stored.tileBrightness === "number"

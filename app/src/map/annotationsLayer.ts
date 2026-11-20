@@ -64,6 +64,11 @@ export interface ClusterPart {
   name: string;
   icon: string;
   count: number;
+  /**
+   * 这一行涉及哪几层（楼层条上的名字，去重；一层就一个）。
+   * 「全部」楼层时悬停明细每行都要带楼层；单层模式下是空的，界面就不显示。
+   */
+  floors?: string[];
 }
 
 /** 悬停时给界面画的小列表。 */
@@ -80,8 +85,18 @@ function partsOf(list: Annotation[]): ClusterPart[] {
   const map = new Map<string, ClusterPart>();
   for (const a of list) {
     const hit = map.get(a.sub);
-    if (hit) hit.count++;
-    else map.set(a.sub, { sub: a.sub, name: a.name, icon: a.icon, count: 1 });
+    if (hit) {
+      hit.count++;
+      if (a.floorTag && hit.floors && !hit.floors.includes(a.floorTag)) hit.floors.push(a.floorTag);
+    } else {
+      map.set(a.sub, {
+        sub: a.sub,
+        name: a.name,
+        icon: a.icon,
+        count: 1,
+        floors: a.floorTag ? [a.floorTag] : undefined,
+      });
+    }
   }
   // 数量从多到少；一样多时按名字排，免得每次渲染顺序乱跳
   return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));

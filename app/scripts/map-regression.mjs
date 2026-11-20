@@ -80,8 +80,10 @@ async function snap(page) {
     const groups = baseSvg ? Array.from(baseSvg.children).filter((n) => n.nodeName === "g") : [];
     const shown = groups.filter((g) => !g.classList.contains("hidden-layer"));
     const rect = baseSvg ? baseSvg.getBoundingClientRect() : null;
-    // 瓦片底图的 className 挂在 GridLayer 的容器 div 上，不在每个 img 上
-    const baseLayer = box ? box.querySelector(".leaflet-tile-pane .otm-base-tile") : null;
+    // 瓦片底图的 className 挂在 GridLayer 的容器 div 上，不在每个 img 上。
+    // 切换底图时旧容器可能还在 DOM 里挂一下，取最后一个（当前那个），别读成上一份。
+    const layers = box ? [...box.querySelectorAll(".leaflet-tile-pane .otm-base-tile")] : [];
+    const baseLayer = layers.length ? layers[layers.length - 1] : null;
     const me = box ? box.querySelector(".otm-me") : null;
     return {
       root: root ? root.children.length : 0,
@@ -123,16 +125,9 @@ async function waitBase(page, style) {
   }
 }
 
-/** 切完等界面稳下来，再检查一遍。 */
-async function check(page, name, style, extra = "") {
-  try {
-    if (style) await waitBase(page, style);
-  } catch {
-    // 底图没出来，交给下面的检查报错
-  }
-  await page.waitForTimeout(120);
-  const s = await snap(page);
-  const ok =
+/** 一次截图里看到的东西算不算「界面还好、底图对」。 */
+function verdict(s, style) {
+  return (
     s.root > 0 &&
     !s.crash &&
     s.status &&
@@ -140,7 +135,27 @@ async function check(page, name, style, extra = "") {
     s.annos > 0 &&
     (style === "tile"
       ? s.baseTilesLoaded > 0 && !s.svgBase
-      : s.svgBase && s.svgShown > 0 && s.svgBox !== "0x0" && !s.baseLayer);
+      : s.svgBase && s.svgShown > 0 && s.svgBox !== "0x0" && !s.baseLayer)
+  );
+}
+
+/** 切完等界面稳下来，再检查一遍。 */
+async function check(page, name, style, extra = "") {
+  // 回放是实时的：检查的这一刻它可能刚好进下一局、地图自己换了一张，底图图层正在重建。
+  // 多等一两次再量，别把「正在换」当成「底图没出来」。
+  let s = null;
+  let ok = false;
+  for (let attempt = 0; attempt < 3 && !ok; attempt++) {
+    if (attempt > 0) await page.waitForTimeout(1500);
+    try {
+      if (style) await waitBase(page, style);
+    } catch {
+      // 底图没出来，交给下面的检查报错
+    }
+    await page.waitForTimeout(120);
+    s = await snap(page);
+    ok = verdict(s, style);
+  }
   const detail =
     `base=${style === "tile" ? `tile ${s.baseTilesLoaded}/${s.baseTiles}` : `svg ${s.svgShown}组 ${s.svgBox}`}` +
     ` anno=${s.annos} root=${s.root}${s.crash ? " CRASH占位" : ""}${extra ? " " + extra : ""}`;
@@ -190,27 +205,56 @@ async function checkSeason(page) {
     row ? `${row.n} 个、子类 ${row.subs.join(" / ")}` : "没有这一行",
   );
 
-  // 地图上是文件形状的徽章，按种类上色：同一张图里几种必须颜色不同，且和子类标签一致
+  // 地图徽章＝物品图 + 种类色边框（主审 #344）：同图几种颜色要不同，边框色要等于筛选标签的颜色
   const badges = await page.evaluate(() => {
-    const colors = [...document.querySelectorAll(".otm-doc")].map((d) =>
-      getComputedStyle(d).getPropertyValue("--c").trim().toLowerCase(),
-    );
-    const boxes = [...document.querySelectorAll(".otm-doc")].map((d) => Math.round(d.getBoundingClientRect().height));
-    const chips = [...document.querySelectorAll(".subs2 .sc")].map((s) =>
-      getComputedStyle(s).getPropertyValue("--c").trim().toLowerCase(),
-    );
-    const aside = [...document.querySelectorAll(".otm-anno img")].filter((i) => i.src.includes("season.png")).length;
-    return { count: colors.length, colors: [...new Set(colors)], min: Math.min(...boxes), chips, aside };
+    const els = [...document.querySelectorAll(".otm-doc")];
+    const chips = [...document.querySelectorAll(".subs2 .sc")];
+    const hexRgb = (c) => {
+      const m = c.trim().match(/^#?([0-9a-f]{6})$/i);
+      if (!m) return c.trim();
+      const n = parseInt(m[1], 16);
+      return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`;
+    };
+    const varOf = (el) => getComputedStyle(el).getPropertyValue("--c").trim().toLowerCase();
+    return {
+      count: els.length,
+      colors: [...new Set(els.map(varOf))],
+      borders: [...new Set(els.map((d) => getComputedStyle(d).borderTopColor))],
+      min: Math.min(...els.map((d) => Math.round(d.getBoundingClientRect().height))),
+      radius: [...new Set(els.map((d) => getComputedStyle(d).borderRadius))],
+      imgs: els.filter((d) => d.querySelector("img")).length,
+      imgOk: els.filter((d) => (d.querySelector("img")?.naturalWidth ?? 0) > 0).length,
+      chips: [...new Set(chips.map(varOf))],
+      chipRgb: [...new Set(chips.map((c) => hexRgb(varOf(c))))],
+      chipCount: chips.length,
+      chipImgs: chips.filter((c) => (c.querySelector("img.si")?.naturalWidth ?? 0) > 0).length,
+      aside: [...document.querySelectorAll(".otm-anno img")].filter((i) => i.src.includes("season.png")).length,
+    };
   });
   record(
-    "地图上是按种类上色的文件徽章",
+    "地图徽章按种类上色",
     badges.count > 0 && badges.colors.length >= 2 && badges.aside === 0,
-    `${badges.count} 个、颜色 ${badges.colors.join(" ")}、最小 ${badges.min}px`,
+    `${badges.count} 个、颜色 ${badges.colors.join(" ")}`,
   );
   record(
-    "子类标签的颜色跟地图上的徽章一致",
-    badges.chips.length === badges.colors.length && badges.chips.every((c) => badges.colors.includes(c)),
-    `标签 ${badges.chips.join(" ")}`,
+    "徽章里是物品图，图片真的画出来了",
+    badges.count > 0 && badges.imgs === badges.count && badges.imgOk === badges.count,
+    `${badges.count} 个徽章、带图 ${badges.imgs} 个、图有内容 ${badges.imgOk} 个`,
+  );
+  record(
+    "徽章的边框颜色跟子类标签一致",
+    badges.borders.length > 0 && badges.borders.every((b) => badges.chipRgb.includes(b)),
+    `边框 ${badges.borders.join(" ")} ／ 标签 ${badges.chipRgb.join(" ")}`,
+  );
+  record(
+    "徽章最小 28px、圆角 8px",
+    badges.min >= 28 && badges.radius.every((r) => Math.round(parseFloat(r)) === 8),
+    `最小 ${badges.min}px、圆角 ${badges.radius.join(" ")}`,
+  );
+  record(
+    "筛选的赛季子类标签前有 14px 物品图",
+    badges.chipCount > 0 && badges.chipImgs === badges.chipCount,
+    `${badges.chipCount} 个标签、带图 ${badges.chipImgs} 个`,
   );
 
   // 点开一个刷新点 → 右侧详情只讲这一个点（主审 #282）：标题、照片、描述、楼层、距离、今日、署名
@@ -314,6 +358,200 @@ async function checkSeason(page) {
   await page.evaluate(() => document.querySelector(".dback")?.click());
 }
 
+/** 楼层条的现状：「全部」按钮、分隔线、各层名字、当前筛出来的标注数。 */
+async function floorsBar(page) {
+  return page.evaluate(() => {
+    const el = document.querySelector(".floors");
+    if (!el) return null;
+    const kids = [...el.children];
+    const all = kids.find((k) => k.classList.contains("all"));
+    const onFloor = kids.find((k) => k.tagName === "BUTTON" && !k.classList.contains("all") && k.classList.contains("on"));
+    return {
+      firstAll: !!kids[0]?.classList.contains("all"),
+      firstText: kids[0]?.textContent?.trim() ?? "",
+      sep: kids[1]?.className ?? "",
+      labels: kids.filter((k) => k.tagName === "BUTTON" && !k.classList.contains("all")).map((b) => b.textContent.trim()),
+      all: el.dataset.all === "1",
+      count: Number(el.dataset.anno ?? -1),
+      allOn: !!all?.classList.contains("on"),
+      allBg: all ? getComputedStyle(all).backgroundColor : "",
+      floorOn: onFloor ? onFloor.textContent.trim() : null,
+      floorBg: onFloor ? getComputedStyle(onFloor).backgroundColor : "",
+    };
+  });
+}
+
+/**
+ * 楼层条上的「全部」（主审 #341、v3-floors-all.png）：
+ * 选它时所有楼层的标注都画出来、不在地面的带楼层标签，底图还是地面层，
+ * 选择记进偏好，点某一层就回到单层；小地图不跟着变。
+ */
+async function checkFloorsAll(page) {
+  const b0 = await floorsBar(page);
+  record(
+    "楼层条最上面是「全部」，下面一条分隔线",
+    !!b0 && b0.firstAll && b0.firstText === "全部" && b0.sep.split(/\s+/).includes("flsep") && b0.labels.length >= 2,
+    b0 ? `全部 ｜ ${b0.labels.join(" ")}` : "没有楼层条",
+  );
+  if (!b0) return;
+
+  // 逐层量一遍标注数，加起来跟「全部」比
+  const per = {};
+  for (const label of b0.labels) {
+    await clickFloor(page, label);
+    await page.waitForTimeout(120);
+    per[label] = (await floorsBar(page)).count;
+  }
+  const sum = Object.values(per).reduce((a, b) => a + b, 0);
+  const perText = Object.entries(per)
+    .map(([k, v]) => `${k} ${v}`)
+    .join(" + ");
+
+  await page.locator(".floors .fl.all").click();
+  await page.waitForTimeout(250);
+  const bAll = await floorsBar(page);
+  record("选「全部」后标注数等于各层之和", bAll.all && bAll.count === sum, `${bAll.count} = ${perText}`);
+  const base = await page.evaluate(() => {
+    const svg = document.querySelector(".map svg.otm-svg-base");
+    const shown = svg ? [...svg.children].filter((g) => g.nodeName === "g" && !g.classList.contains("hidden-layer")) : [];
+    return { shown: shown.length, ids: shown.map((g) => g.id) };
+  });
+  record("「全部」时底图仍然只画地面层", base.shown === 1 && /ground/i.test(base.ids[0] ?? ""), `${base.ids.join(" ") || "没露出组"}`);
+
+  // 单个标注的楼层标签：楼层的带、地面层不带、合并标注不带
+  const tags = await page.evaluate(() => {
+    const list = [];
+    for (const el of document.querySelectorAll(".map .otm-anno")) {
+      const holder = el.querySelector("[data-l]");
+      if (!holder) {
+        list.push({ l: null, tag: null });
+        continue;
+      }
+      list.push({ l: Number(holder.getAttribute("data-l")), tag: el.querySelector(".ft")?.textContent?.trim() || null });
+    }
+    return { list, clusterTags: document.querySelectorAll(".map .otm-cluster .ft").length };
+  });
+  const up = tags.list.filter((t) => t.l !== null && t.l >= 0);
+  const ground = tags.list.filter((t) => t.l === -1);
+  record(
+    "不在地面层的单个标注右上角带楼层标签",
+    up.length > 0 && up.every((t) => !!t.tag),
+    `${up.length} 个楼层标注、带标签 ${up.filter((t) => t.tag).length} 个（${[...new Set(up.map((t) => t.tag))].join(" ")}）`,
+  );
+  record("地面层的标注不带标签", ground.length > 0 && ground.every((t) => !t.tag), `${ground.length} 个地面标注`);
+  record("标签写的就是楼层条上的名字", up.every((t) => b0.labels.includes(t.tag)), [...new Set(up.map((t) => t.tag))].join(" "));
+  record("2F 的标注带「2F」", up.some((t) => t.tag === "2F"), [...new Set(up.map((t) => t.tag))].join(" "));
+  record("合并标注本身不带楼层标签", tags.clusterTags === 0, `合并点里的标签 ${tags.clusterTags} 个`);
+
+  // 合并标注的悬停明细：每一行带楼层。地面那一堆本来就没有楼层，所以多试几个，
+  // 收集全部行，要求有风的都写着楼层条上的名字、并且确实有带楼层的行
+  const seenRows = [];
+  let found = 0;
+  for (let i = 0; i < 12 && found === 0; i++) {
+    const box = await page.evaluate((idx) => {
+      const el = document.querySelectorAll(".map .otm-cluster")[idx];
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    }, i);
+    if (!box) break;
+    await page.mouse.move(box.x, box.y);
+    await page.waitForTimeout(160);
+    const rows = await page.evaluate(() => {
+      const card = document.querySelector(".ccluster");
+      if (!card) return null;
+      return [...card.querySelectorAll(".crow")].map((r) => ({
+        name: r.querySelector("span")?.textContent?.trim() ?? "",
+        floor: r.querySelector(".ctag")?.textContent?.trim() ?? null,
+      }));
+    });
+    if (!rows) continue;
+    seenRows.push(...rows);
+    found = rows.filter((r) => r.floor).length;
+  }
+  const tagged = seenRows.filter((r) => r.floor);
+  record(
+    "合并标注的悬停明细每行带楼层",
+    tagged.length > 0 && tagged.every((r) => r.floor.split("·").every((f) => b0.labels.includes(f))),
+    `${seenRows.length} 行，带楼层的 ${tagged.length} 行（${[...new Set(tagged.map((r) => r.floor))].join(" ")}）`,
+  );
+  await page.mouse.move(8, 8);
+
+  // 点某一层：退出「全部」，回到单层
+  await clickFloor(page, "2F");
+  await page.waitForTimeout(180);
+  const b2 = await floorsBar(page);
+  const left = await page.evaluate(() => ({
+    tags: document.querySelectorAll(".map .ft").length,
+    layerCls: document.querySelectorAll(".map .otm-anno[class*='otm-l']").length,
+  }));
+  record(
+    "点 2F 就回到单层",
+    !b2.all && b2.count === per["2F"] && left.tags === 0 && left.layerCls === 0,
+    `${b2.count} 个、标签 ${left.tags} 个、存的是 ${await page.evaluate(() => JSON.parse(localStorage.getItem("otm.prefs") || "{}").floorAll)}`,
+  );
+  record("「全部」和选中的楼层是同一种黄底", !!bAll.allBg && bAll.allBg === b2.floorBg, `${bAll.allBg} / ${b2.floorBg}`);
+
+  // 换局也保持：重新打开页面还是「全部」
+  await page.locator(".floors .fl.all").click();
+  await page.waitForTimeout(200);
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForFunction(() => document.querySelectorAll(".map .otm-anno, .map .otm-cluster").length > 0, null, {
+    timeout: 60000,
+  });
+  const bR = await floorsBar(page);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("otm.prefs") || "{}").floorAll);
+  record(
+    "刷新页面后「全部」仍然保持",
+    bR.all && bR.allOn && bR.count === bAll.count && stored === true,
+    `全部=${bR.all}、${bR.count} 个、存的 ${stored}`,
+  );
+
+  // 小地图不跟着「全部」走：只画自己所在那一层，不带楼层标签
+  const miniCtx = await browser.newContext({
+    storageState: await page.context().storageState(),
+    viewport: { width: 420, height: 420 },
+  });
+  // 小地图那一页用一份最小的假事件：立刻进图、一张二层截图，不等真的回放走到那一步
+  let miniHits = 0;
+  await miniCtx.route("**/mock-events.jsonl", (route) => {
+    miniHits++;
+    return route.fulfill({ status: 200, contentType: "application/jsonl", body: MINI_LOG });
+  });
+  const mini = await miniCtx.newPage();
+  const miniErrors = [];
+  mini.on("pageerror", (e) => miniErrors.push(String(e).split("\n")[0]));
+  await mini.goto(`${URL_}?view=mini`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  // 数据是页面起来之后才拉的，主窗口那边同时在拉，等它真画出来
+  let m = { tags: 0, layerCls: 0, n: 0, floorText: [] };
+  for (let i = 0; i < 60; i++) {
+    await mini.waitForTimeout(1000);
+    m = await mini.evaluate(() => ({
+      tags: document.querySelectorAll(".mini .ft").length,
+      layerCls: document.querySelectorAll(".mini .otm-anno[class*='otm-l']").length,
+      n: document.querySelectorAll(".mini .otm-anno, .mini .otm-cluster").length,
+      floorText: [...document.querySelectorAll(".mini-tag")].map((n) => n.textContent.trim()),
+    }));
+    if (m.n > 0 && m.floorText.length > 0) break;
+  }
+  record(
+    "小地图不跟随「全部」（还是自己那一层）",
+    m.n > 0 &&
+      m.tags === 0 &&
+      m.layerCls === 0 &&
+      m.floorText.some((t) => b0.labels.includes(t)) &&
+      !m.floorText.includes("全部"),
+    `画了 ${m.n} 个、标签 ${m.tags} 个、带层号 ${m.layerCls} 个、文字 ${m.floorText.join(" / ") || "无"}` +
+      (miniErrors.length ? `、报错 ${miniErrors[0]}` : "") +
+      `、拦截 ${miniHits} 次`,
+  );
+  await miniCtx.close();
+
+  // 收起「全部」，后面几项还按单层看
+  await clickFloor(page, "地面");
+  await page.waitForTimeout(120);
+}
+
 async function clickSeg(page, label) {
   await page.locator(".seg span", { hasText: new RegExp(`^${label}$`) }).first().click();
 }
@@ -342,6 +580,23 @@ async function waitMeMove(page, from, timeout = 25000) {
   return null;
 }
 
+/** 小地图那一页的假事件：进图、开打、一张二层截图（和 mini-regression 里同一套格式）。 */
+const MINI_LOG = (() => {
+  const t0 = Date.parse("2026-11-19T12:00:00.000+01:00");
+  const at = (ms) => new Date(t0 + ms).toISOString();
+  return [
+    {
+      ms: 0,
+      ev: { type: "paths", game_dir: "X:/EFT", screenshot_dir: "X:/EFT/Screenshots", log_dir: "X:/EFT/Logs/x" },
+    },
+    { ms: 50, ev: { type: "raid_loading", map: "bigmap" } },
+    { ms: 100, ev: { type: "raid_started", map: "bigmap", scav: false, raid_mode: "Online" } },
+    { ms: 300, ev: { type: "position", x: 199.0, y: 3.2, z: 148.0, yaw: 206.57, source: "screenshot" } },
+  ]
+    .map(({ ms, ev }) => JSON.stringify({ ...ev, time: at(ms) }))
+    .join("\n");
+})();
+
 // —— 跑一遍 ——
 
 const browser = await chromium.launch({ executablePath: exe, args: ["--no-sandbox"] });
@@ -367,6 +622,8 @@ try {
   await check(page, "初始（矢量）", "svg");
   await checkSeason(page);
   await check(page, "看完赛季详情后（矢量）", "svg");
+  await checkFloorsAll(page);
+  await check(page, "看完「全部」楼层后（矢量）", "svg");
 
   // 1—6：矢量 / 实景来回切，中间夹着楼层、预设、手动换图
   const trip = async (style) => {

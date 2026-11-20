@@ -31,6 +31,7 @@ export function AnnotationCard({
       </h4>
       <div className="meta">
         <span className="tagc">{CATEGORY_NAMES[a.category]}</span>
+        {a.floorTag ? <span className="ctag">{a.floorTag}</span> : null}
         {d !== null ? <span>{meters(d)}</span> : null}
         <span>
           {Math.round(a.x)}, {Math.round(a.z)}

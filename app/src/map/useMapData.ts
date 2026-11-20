@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation, AnnotationSet } from "../data/annotations";
-import { buildAnnotations } from "../data/annotations";
-import { onLayer } from "../data/floors";
+import { buildAnnotations, layerName } from "../data/annotations";
+import { annotationLayer, onLayer } from "../data/floors";
 import { dataStore, type DataBundle, type Translations, type UpstreamMap } from "../data/loader";
 import { findMapMeta, upstreamMapOf, type MapMeta } from "../data/mapsMeta";
 import type { ClusterHover } from "./annotationsLayer";
@@ -46,24 +46,43 @@ export function useAnnotations(data: DataBundle, map: UpstreamMap | null): Annot
   return useMemo(() => buildAnnotations(map, data.maps, data.zh), [map, data.maps, data.zh]);
 }
 
+/** 全部楼层时单个标注右上角的小标签用的名字；地面不加标签。 */
+export function floorTagOf(meta: MapMeta | null, index: number): string | undefined {
+  if (index < 0) return undefined;
+  const name = meta?.layers?.[index]?.name;
+  return name ? layerName(name) : undefined;
+}
+
 /**
  * 按筛选和楼层过滤后的标注。
  * 选中哪一层就只留哪一层的标注：地面（-1）只留不属于任何一层的，
  * 楼层只留归属这一层的，别的层一个都不出现。
+ *
+ * layer 是「全部」时不过滤楼层，并给每个不在地面的标注带上层号和楼层条上的名字，
+ * 地图上据此画一个小标签（合并标注不带，悬停明细里按行显示）。
  */
 export function filterAnnotations(
   set: AnnotationSet,
   prefs: Prefs,
   meta: MapMeta | null,
-  layer: number,
+  layer: number | "all",
 ): Annotation[] {
   const f = effectiveFilters(prefs);
+  const all = layer === "all";
   const out: Annotation[] = [];
   for (const a of set.items) {
     if (!subVisible(f, a.category, a.sub)) continue;
     // 自带层号（赛季包的点位）直接认；没有的按高度和区域框算
-    const ok = a.layer !== undefined ? a.layer === layer : onLayer(meta, layer, a, a.top, a.bottom);
-    if (!ok) continue;
+    const own = a.layer ?? annotationLayer(meta, a);
+    if (!all) {
+      const ok = a.layer !== undefined ? a.layer === layer : onLayer(meta, layer, a, a.top, a.bottom);
+      if (!ok) continue;
+    } else {
+      // 层号总要带上（地面是 -1，没有标签）；标签只给不在地面的
+      const tag = floorTagOf(meta, own);
+      out.push({ ...a, floorIndex: own, floorTag: tag });
+      continue;
+    }
     out.push(a);
   }
   return out;

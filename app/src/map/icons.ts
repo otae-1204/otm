@@ -3,6 +3,7 @@
 
 import L from "leaflet";
 import type { Annotation } from "../data/annotations";
+import { itemIcon } from "../data/season/icons";
 import { markerRotation } from "./crs";
 import type { MapMeta } from "../data/mapsMeta";
 
@@ -13,38 +14,67 @@ export function iconUrl(name: string) {
 }
 
 /**
- * 赛季文件在地图上：文件形状的徽章，边框按种类上色（v2-season.png）。
- * 物品图缩到这么小认不出来，所以地图上不用物品图；物品图只在详情标题和悬停卡片里。
+ * 赛季文件在地图上：物品图 + 2px 的种类色边框，暗底圆角（v3-doc-badges2.png）。
+ * 物品图里面的空边在 CSS 里裁掉（图放大到框的 132%），文件才撑得满。
+ * 没有物品图（换了赛季、换了物品 id）退回文件形状的徽章。
  */
 const DOC_PATH = "M6.6 2.4h6.9l3.9 3.9v15.3H6.6z";
 const DOC_FOLD = "M13.5 2.4v3.9h3.9";
 
-function docBadge(color: string, size: number, key?: string): string {
+function imgBadge(color: string, size: number, src: string, key?: string, attrs = ""): string {
+  const r = Math.round(size * 0.29);
+  return (
+    `<span class="otm-doc otm-doc-img" data-k="${key ?? ""}"${attrs} style="--c:${color};width:${size}px;height:${size}px;` +
+    `border-radius:${r}px;border-width:2px">` +
+    `<img src="${src}" alt="" draggable="false"/></span>`
+  );
+}
+
+function docBadge(color: string, size: number, key?: string, attrs = ""): string {
   const r = Math.round(size * 0.3);
   const bw = Math.max(1.5, Math.round(size * 0.085));
   return (
-    `<span class="otm-doc" data-k="${key ?? ""}" style="--c:${color};width:${size}px;height:${size}px;` +
+    `<span class="otm-doc" data-k="${key ?? ""}"${attrs} style="--c:${color};width:${size}px;height:${size}px;` +
     `border-radius:${r}px;border-width:${bw}px">` +
     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" ` +
     `stroke-linecap="round" stroke-linejoin="round"><path d="${DOC_PATH}"/><path d="${DOC_FOLD}"/></svg></span>`
   );
 }
 
+/**
+ * 右上角的小楼层标签：只有「全部」楼层时才带（单个标注，合并标注不带）。
+ * 图标上带 data-l 和 otm-l<层号>，回归脚本靠它们区分地面和楼层。
+ */
+function floorTagHtml(a: Annotation): string {
+  if (!a.floorTag) return "";
+  const l = a.floorIndex ?? -1;
+  return `<span class="ft" data-l="${l}">${a.floorTag.replace(/[&<>]/g, "")}</span>`;
+}
+
 /** 标注图标：尺寸随缩放变化，由上层决定；密集时由上层合并。 */
 export function annotationIcon(a: Annotation, size = 26): L.DivIcon {
+  const tag = floorTagHtml(a);
+  // 「全部」楼层时标出层号，方便区分是谁家的标签
+  const layerCls = a.floorIndex === undefined ? "" : ` otm-l${a.floorIndex}`;
+  const dataL = a.floorIndex === undefined ? "" : ` data-l="${a.floorIndex}"`;
   if (a.season) {
-    // 文件徽章不比别的标注小：整张图时也给到 24px
-    const s = Math.max(size, 24);
+    // 整张图时 28px（比撤离点、上锁的门大一号），放大时跟着其它单个标注一起长
+    const s = Math.round(Math.max(28, size * 1.15));
+    const src = itemIcon(a.item);
+    const badge = src
+      ? imgBadge(a.color ?? "#4da3ff", s, src, a.key, dataL)
+      : docBadge(a.color ?? "#4da3ff", s, a.key, dataL);
     return L.divIcon({
-      className: "otm-anno otm-doc-anno",
-      html: docBadge(a.color ?? "#4da3ff", s, a.key),
+      className: `otm-anno otm-doc-anno${layerCls}`,
+      html: badge + tag,
       iconSize: [s, s],
       iconAnchor: [s / 2, s / 2],
     });
   }
   return L.divIcon({
-    className: "otm-anno",
-    html: `<img src="${iconUrl(a.icon)}" width="${size}" height="${size}" alt="" draggable="false"/>`,
+    className: `otm-anno${layerCls}`,
+    html:
+      `<img src="${iconUrl(a.icon)}" width="${size}" height="${size}" alt="" draggable="false"${dataL}/>` + tag,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });

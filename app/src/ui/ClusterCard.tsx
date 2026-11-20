@@ -13,6 +13,7 @@ export function ClusterCard({ hover }: { hover: ClusterHover }) {
         <div className="crow" key={p.sub || p.name}>
           <img src={iconUrl(p.icon)} alt="" />
           <span>{p.name}</span>
+          {p.floors?.length ? <span className="ctag">{p.floors.join("·")}</span> : null}
           <b>{p.count}</b>
         </div>
       ))}

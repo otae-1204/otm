@@ -37,6 +37,7 @@ export function seasonItems(pack: SeasonPack | null, meta: MapMeta | null): Anno
       layer: layerIndexOf(meta, p.floor),
       // 图标用物品图：地图上是文件形状的徽章，物品图留给详情标题和悬停卡片
       icon: types.get(p.type) ? `doc_${types.get(p.type)!.item}` : "season",
+      item: types.get(p.type)?.item ?? undefined,
       color: types.get(p.type)?.color,
       note: p.desc,
       season: { type: p.type, index: i },
@@ -59,6 +60,7 @@ export function withSeason(set: AnnotationSet, pack: SeasonPack | null, meta: Ma
       name: t.name,
       count: count.get(t.id) ?? 0,
       icon: `doc_${t.item}`,
+      item: t.item,
       color: t.color,
     }));
   return { items: [...set.items, ...seasonItems(pack, meta)], subs: { ...set.subs, season: subs } };

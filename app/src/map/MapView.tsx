@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { Annotation } from "../data/annotations";
-import { layerOfPoint } from "../data/floors";
+import { GROUND, layerOfPoint } from "../data/floors";
 import type { Translations } from "../data/loader";
 import type { MapMeta } from "../data/mapsMeta";
 import type { ClusterIconMode } from "../prefs";
@@ -20,8 +20,11 @@ export interface MapViewProps {
   meta: MapMeta | null;
   style: "svg" | "tile";
   zh: Translations | null;
-  /** 当前楼层；-1 表示不按楼层过滤。 */
-  layer: number;
+  /**
+   * 当前楼层；-1 是地面。
+   * 「全部」时底图仍画地面层，箭头和轨迹照常画（v3-floors-all.png）。
+   */
+  layer: number | "all";
   /** 按筛选和楼层过滤后的标注。 */
   visible: Annotation[];
   clusterIcon: ClusterIconMode;
@@ -81,9 +84,9 @@ export function MapView(props: MapViewProps) {
     };
   }, [controller, map.version, picked?.a.key]);
 
-  // 楼层
+  // 楼层：底图跟着选的那一层；「全部」时底图仍画地面层
   useEffect(() => {
-    controller?.setLayer(layer);
+    controller?.setLayer(layer === "all" ? GROUND : layer);
   }, [controller, map.version, layer, meta?.key]);
 
   // 标注与外框
@@ -105,8 +108,10 @@ export function MapView(props: MapViewProps) {
     };
   }, [controller, map.version, visible, clusterIcon]);
 
-  // 自己只在自己所在的那一层上画：看别的楼层时连箭头和轨迹一起收起来
-  const posOnLayer = position && layerOfPoint(meta?.layers, position) === layer ? position : null;
+  // 自己只在自己所在的那一层上画：看别的楼层时连箭头和轨迹一起收起来。
+  // 「全部」楼层是总览视角，自己照常画。
+  const posOnLayer =
+    position && (layer === "all" || layerOfPoint(meta?.layers, position) === layer) ? position : null;
 
   // 自己与轨迹
   useEffect(() => {

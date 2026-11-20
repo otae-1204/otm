@@ -34,6 +34,12 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
   box-shadow: 0 1px 4px rgba(0,0,0,.6);
 }
 .otm-doc svg { position: absolute; inset: 13%; width: 74%; height: 74%; }
+/* 物品图徽章：图放大到框的 132%，把图里的空边裁在外面，文件撑满（v3-doc-badges2.png） */
+.otm-doc-img { overflow: hidden; }
+.otm-doc-img img, .otm-anno:hover .otm-doc-img img {
+  position: absolute; left: 50%; top: 50%; width: 132%; height: 132%;
+  transform: translate(-50%, -50%); filter: none;
+}
 .otm-doc-anno:hover .otm-doc { filter: brightness(1.15); box-shadow: 0 0 7px rgba(255,255,255,.4); }
 /* 合并标注：图标 + 数量角标，后面两层错开的淡轮廓（v2-cluster.png） */
 .otm-stack { position: relative; }
@@ -99,6 +105,7 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .sc.on.extract { background: var(--c-extract); }
 .sc.on.hazard { background: var(--warn); }
 .sc.season { color: var(--c, var(--c-season)); }
+.sc.season img.si { border-radius: 3px; }
 .sc.season.on { background: var(--c, var(--c-season)); border-color: var(--c, var(--c-season)); color: #14171c; }
 
 /* 右上工具 */
@@ -118,6 +125,13 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .fl.on { background: var(--accent); color: #14171c; font-weight: 700; }
 .fl.on:hover { background: var(--accent); color: #14171c; }
 .fl.auto { box-shadow: inset 0 0 0 1px rgba(255,210,74,.5); }
+/* 楼层条最上面的「全部」，下面一条细线和各层隔开（v3-floors-all.png） */
+.fl.all { font-size: 13px; height: 34px; }
+.flsep { display: block; height: 1px; background: rgba(255,255,255,.16); margin: 2px 6px; }
+/* 单个标注右上角的小楼层标签，只在「全部」楼层时出现 */
+.otm-anno .ft { position: absolute; left: calc(100% - 5px); top: -5px; font: 600 10px/14px var(--font); padding: 0 4px; border-radius: 4px; background: #0e1014; color: #cfd5df; border: 1px solid rgba(255,255,255,.18); white-space: nowrap; pointer-events: none; }
+/* 合并明细与卡片里的楼层标签 */
+.ctag { padding: 1px 6px; border-radius: 5px; background: rgba(255,255,255,.07); color: var(--text); font-size: 11px; line-height: 18px; }
 
 /* 状态栏 */
 .status { position: absolute; left: 24px; bottom: 24px; display: flex; gap: 14px; align-items: center; height: 38px; padding: 0 16px; border-radius: 19px; font-size: 15px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); }

@@ -7,6 +7,7 @@
 import { Fragment, useState, type CSSProperties } from "react";
 import type { AnnotationSet, CategoryId } from "../data/annotations";
 import { CATEGORY_ICON, CATEGORY_NAMES, CATEGORY_ORDER } from "../data/annotations";
+import { itemIcon } from "../data/season/icons";
 import {
   activePreset,
   defaultFilters,
@@ -146,6 +147,7 @@ export function FilterPanel({ set }: { set: AnnotationSet }) {
               <div className="subs2">
                 {seasonSubs.map((s) => {
                   const son = subVisible(f, "season", s.id);
+                  const pic = itemIcon(s.item);
                   return (
                     <button
                       key={s.id}
@@ -153,6 +155,7 @@ export function FilterPanel({ set }: { set: AnnotationSet }) {
                       style={{ "--c": s.color } as CSSProperties}
                       onClick={() => toggleSub("season", s.id)}
                     >
+                      {pic ? <img className="si" src={pic} alt="" /> : null}
                       {s.name}
                     </button>
                   );

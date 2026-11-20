@@ -45,6 +45,14 @@ export interface Annotation {
   layer?: number;
   /** 赛季文件：种类和它在赛季包里的序号，点开详情时要。 */
   season?: { type: string; index: number };
+  /** 赛季文件：上游物品 id，地图徽章和子类标签用它找物品图。 */
+  item?: string;
+  /**
+   * 「全部」楼层时算出来的层号与楼层条上的名字，画一个小的楼层标签用。
+   * 单层模式不带这两个字段，地图上就没有标签。
+   */
+  floorIndex?: number;
+  floorTag?: string;
 }
 
 export const CATEGORY_ORDER: CategoryId[] = [
@@ -228,6 +236,8 @@ export interface SubItem {
   icon?: string;
   /** 子类标签自己的颜色（赛季文件按种类上色）；没有就用大类的颜色。 */
   color?: string;
+  /** 赛季文件：上游物品 id，标签前面那枚 14px 的物品图用它找。 */
+  item?: string;
 }
 
 export interface AnnotationSet {
