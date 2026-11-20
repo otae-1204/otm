@@ -34,10 +34,10 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
   box-shadow: 0 1px 4px rgba(0,0,0,.6);
 }
 .otm-doc svg { position: absolute; inset: 13%; width: 74%; height: 74%; }
-/* 物品图徽章：图放大到框的 132%，把图里的空边裁在外面，文件撑满（v3-doc-badges2.png） */
+/* 物品图徽章：图比框大 1.35 倍居中（尺寸写在行内），overflow 裁掉四周空边，文件撑满框 */
 .otm-doc-img { overflow: hidden; }
 .otm-doc-img img, .otm-anno:hover .otm-doc-img img {
-  position: absolute; left: 50%; top: 50%; width: 132%; height: 132%;
+  position: absolute; left: 50%; top: 50%; max-width: none;
   transform: translate(-50%, -50%); filter: none;
 }
 .otm-doc-anno:hover .otm-doc { filter: brightness(1.15); box-shadow: 0 0 7px rgba(255,255,255,.4); }
@@ -105,7 +105,9 @@ button { font: inherit; color: inherit; background: none; border: none; padding:
 .sc.on.extract { background: var(--c-extract); }
 .sc.on.hazard { background: var(--warn); }
 .sc.season { color: var(--c, var(--c-season)); }
-.sc.season img.si { border-radius: 3px; }
+.sc.season .si { position: relative; flex: 0 0 auto; width: 14px; height: 14px; border-radius: 3px; overflow: hidden; background: #11141a; }
+.sc.season .si img { position: absolute; left: 50%; top: 50%; width: 19px; height: 19px; max-width: none; transform: translate(-50%, -50%); filter: none; }
+.sc.on .si { background: transparent; }
 .sc.season.on { background: var(--c, var(--c-season)); border-color: var(--c, var(--c-season)); color: #14171c; }
 
 /* 右上工具 */

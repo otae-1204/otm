@@ -15,23 +15,25 @@ export function iconUrl(name: string) {
 
 /**
  * 赛季文件在地图上：物品图 + 2px 的种类色边框，暗底圆角（v3-doc-badges2.png）。
- * 物品图里面的空边在 CSS 里裁掉（图放大到框的 132%），文件才撑得满。
+ * 物品图按框内尺寸的 1.35 倍居中、框 overflow:hidden，裁掉图里的空边让文件撑满框。
  * 没有物品图（换了赛季、换了物品 id）退回文件形状的徽章。
  */
 const DOC_PATH = "M6.6 2.4h6.9l3.9 3.9v15.3H6.6z";
 const DOC_FOLD = "M13.5 2.4v3.9h3.9";
 
 function imgBadge(color: string, size: number, src: string, key?: string, attrs = ""): string {
-  const r = Math.round(size * 0.29);
+  const r = Math.round(size * 0.27);
+  // 图按框内尺寸（去掉 2px 边框）的 1.35 倍居中，框 overflow:hidden 裁掉物品图四周的空边
+  const pic = Math.round((size - 4) * 1.35);
   return (
     `<span class="otm-doc otm-doc-img" data-k="${key ?? ""}"${attrs} style="--c:${color};width:${size}px;height:${size}px;` +
     `border-radius:${r}px;border-width:2px">` +
-    `<img src="${src}" alt="" draggable="false"/></span>`
+    `<img src="${src}" alt="" draggable="false" style="width:${pic}px;height:${pic}px"/></span>`
   );
 }
 
 function docBadge(color: string, size: number, key?: string, attrs = ""): string {
-  const r = Math.round(size * 0.3);
+  const r = Math.round(size * 0.27);
   const bw = Math.max(1.5, Math.round(size * 0.085));
   return (
     `<span class="otm-doc" data-k="${key ?? ""}"${attrs} style="--c:${color};width:${size}px;height:${size}px;` +
@@ -58,8 +60,8 @@ export function annotationIcon(a: Annotation, size = 26): L.DivIcon {
   const layerCls = a.floorIndex === undefined ? "" : ` otm-l${a.floorIndex}`;
   const dataL = a.floorIndex === undefined ? "" : ` data-l="${a.floorIndex}"`;
   if (a.season) {
-    // 整张图时 28px（比撤离点、上锁的门大一号），放大时跟着其它单个标注一起长
-    const s = Math.round(Math.max(28, size * 1.15));
+    // 整张图时 30px（比撤离点、上锁的门大一号），放大时跟着其它单个标注一起长
+    const s = Math.round(Math.max(30, size * 1.15));
     const src = itemIcon(a.item);
     const badge = src
       ? imgBadge(a.color ?? "#4da3ff", s, src, a.key, dataL)

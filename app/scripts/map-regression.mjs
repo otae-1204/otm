@@ -224,10 +224,22 @@ async function checkSeason(page) {
       radius: [...new Set(els.map((d) => getComputedStyle(d).borderRadius))],
       imgs: els.filter((d) => d.querySelector("img")).length,
       imgOk: els.filter((d) => (d.querySelector("img")?.naturalWidth ?? 0) > 0).length,
+      // 图要比框大一圈（裁掉图里的空边）：跟去掉 2px 边框的框内尺寸比
+      crop: els.map((d) => {
+        const f = d.getBoundingClientRect().width;
+        const i = d.querySelector("img")?.getBoundingClientRect().width ?? 0;
+        return +(i / (f - 4)).toFixed(2);
+      }),
+      clip: els.every((d) => getComputedStyle(d).overflow === "hidden"),
       chips: [...new Set(chips.map(varOf))],
       chipRgb: [...new Set(chips.map((c) => hexRgb(varOf(c))))],
       chipCount: chips.length,
-      chipImgs: chips.filter((c) => (c.querySelector("img.si")?.naturalWidth ?? 0) > 0).length,
+      chipImgs: chips.filter((c) => (c.querySelector(".si img")?.naturalWidth ?? 0) > 0).length,
+      chipCrop: chips.map((c) => {
+        const box = c.querySelector(".si")?.getBoundingClientRect().width ?? 0;
+        const pic = c.querySelector(".si img")?.getBoundingClientRect().width ?? 0;
+        return box ? +(pic / box).toFixed(2) : 0;
+      }),
       aside: [...document.querySelectorAll(".otm-anno img")].filter((i) => i.src.includes("season.png")).length,
     };
   });
@@ -247,14 +259,21 @@ async function checkSeason(page) {
     `边框 ${badges.borders.join(" ")} ／ 标签 ${badges.chipRgb.join(" ")}`,
   );
   record(
-    "徽章最小 28px、圆角 8px",
-    badges.min >= 28 && badges.radius.every((r) => Math.round(parseFloat(r)) === 8),
+    "徽章最小 30px、圆角 8px",
+    badges.min >= 30 && badges.radius.every((r) => Math.round(parseFloat(r)) === 8),
     `最小 ${badges.min}px、圆角 ${badges.radius.join(" ")}`,
   );
   record(
-    "筛选的赛季子类标签前有 14px 物品图",
-    badges.chipCount > 0 && badges.chipImgs === badges.chipCount,
-    `${badges.chipCount} 个标签、带图 ${badges.chipImgs} 个`,
+    "物品图从框里裁出来（裁掉空边、文件撑满）",
+    badges.clip && badges.crop.every((c) => c >= 1.25 && c <= 1.45),
+    `框内倍数 ${[...new Set(badges.crop)].join(" ")}、overflow ${badges.clip ? "hidden" : "没裁"}`,
+  );
+  record(
+    "筛选的赛季子类标签前有 14px 物品图，同样裁切",
+    badges.chipCount > 0 &&
+      badges.chipImgs === badges.chipCount &&
+      badges.chipCrop.every((c) => c >= 1.25 && c <= 1.45),
+    `${badges.chipCount} 个标签、带图 ${badges.chipImgs} 个、图/框 ${[...new Set(badges.chipCrop)].join(" ")}`,
   );
 
   // 点开一个刷新点 → 右侧详情只讲这一个点（主审 #282）：标题、照片、描述、楼层、距离、今日、署名

@@ -155,7 +155,11 @@ export function FilterPanel({ set }: { set: AnnotationSet }) {
                       style={{ "--c": s.color } as CSSProperties}
                       onClick={() => toggleSub("season", s.id)}
                     >
-                      {pic ? <img className="si" src={pic} alt="" /> : null}
+                      {pic ? (
+                        <span className="si">
+                          <img src={pic} alt="" />
+                        </span>
+                      ) : null}
                       {s.name}
                     </button>
                   );
