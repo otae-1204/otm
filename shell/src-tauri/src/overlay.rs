@@ -27,6 +27,17 @@ use crate::{log, win};
 pub const MINI: &str = "mini";
 /// 叠加层页面报过挂载没有：建窗之后几秒内该报，不报就是页面没加载出来。
 static PAGE_MOUNTED: AtomicBool = AtomicBool::new(false);
+/// 所有 WebView 共用的启动参数。
+///
+/// 实机上：小地图盖在游戏上面看得见，但游戏在前台时按热键画面一点没变。WebView2 会把
+/// 被判成「被遮挡 / 在后台」的窗口暂停重绘和计时器，游戏全屏盖着它，它就冻在最后一帧。
+/// 这几个开关把遮挡计算、后台计时器节流、渲染器后台化都关掉。
+///
+/// 两层注意：设了这项会盖掉 wry 默认的 `--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection`，
+/// 所以要一起带上；同一个进程里所有 WebView 共用一个 WebView2 环境，参数不一致第二个窗口建不出来，
+/// 所以主窗口在 `tauri.conf.json` 的 `additionalBrowserArgs` 里写的必须是同一串（有单元测试盯着）。
+pub const BROWSER_ARGS: &str = "--disable-features=CalculateNativeWinOcclusion,msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-background-timer-throttling --disable-renderer-backgrounding --disable-backgrounding-occluded-windows";
+
 /// 等页面报挂载等多久。
 const MOUNT_WAIT: std::time::Duration = std::time::Duration::from_secs(6);
 
@@ -275,6 +286,14 @@ fn set_adjust(app: &AppHandle, on: bool) {
         }
         overlay.persist(true);
     }
+    log_rect(
+        app,
+        if on {
+            "调整模式里"
+        } else {
+            "调整模式退出后"
+        },
+    );
     emit_state(app);
 }
 
@@ -316,6 +335,14 @@ pub async fn overlay_set_detail(open: bool, height: Option<f64>, app: AppHandle)
     if (want - h).abs() > 0.5 {
         ensure_size(&app, w, want, "详情卡片");
     }
+    log_rect(
+        &app,
+        if open {
+            "卡片开了之后"
+        } else {
+            "卡片收了之后"
+        },
+    );
     emit_state(&app);
 }
 
@@ -514,6 +541,7 @@ fn create(app: &AppHandle) -> tauri::Result<()> {
         .resizable(false)
         // 页面自己认窗口用这个，不靠 URL（实机上带查询串那个地址可疑地空白）
         .initialization_script("window.__OTM_VIEW = 'mini';")
+        .additional_browser_args(BROWSER_ARGS)
         // 不抢焦点：点它、热键把它叫出来都不打断游戏
         .focused(false)
         .focusable(false)
@@ -666,6 +694,15 @@ fn ensure_hidden(app: &AppHandle, why: &str) {
     log::info(win::hide(&window));
 }
 
+/// 每次动完窗口留一行真实样子：`IsWindowVisible`、exstyle、矩形，都从 HWND 读回。
+/// 实机上「窗口说自己显示成功了，可游戏画面上看不见」，只有这一行能分出来。
+fn log_rect(app: &AppHandle, why: &str) {
+    match shell_window(app) {
+        Some(window) => log::info(format!("{why}：{}", win::describe(&window))),
+        None => log::warn(format!("{why}：mini 窗口不在，读不到窗口状态")),
+    }
+}
+
 fn toggle_visible(app: &AppHandle) {
     let Some(win) = app.get_webview_window(MINI) else {
         log::warn("按了显示/隐藏，但 mini 窗口不在");
@@ -707,6 +744,7 @@ fn expand(app: &AppHandle) {
     let (x, y) = (mx + (mw - w) / 2.0, my + (mh - h) / 2.0);
     ensure_place(app, x, y, w, h, "按住展开");
     ensure_shown(app, "按住展开");
+    log_rect(app, "按住展开之后");
     emit_state(app);
 }
 
@@ -738,6 +776,7 @@ fn collapse(app: &AppHandle) {
         if !from.visible {
             ensure_hidden(app, "松开收回");
         }
+        log_rect(app, "松开收回之后");
     }
     emit_state(app);
 }
@@ -884,6 +923,28 @@ fn default_bounds(app: &AppHandle) -> Bounds {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn both_windows_start_with_the_same_browser_args() {
+        // 同一个进程里所有 WebView 共用一个 WebView2 环境：两边参数不一致，mini 窗口建不出来。
+        let conf: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let main_args = conf["app"]["windows"][0]["additionalBrowserArgs"]
+            .as_str()
+            .expect("主窗口没写 additionalBrowserArgs");
+        assert_eq!(main_args, BROWSER_ARGS);
+        // 设了这项就会盖掉 wry 默认的那几个 --disable-features，必须自己带上
+        for need in [
+            "msWebOOUI",
+            "msPdfOOUI",
+            "msSmartScreenProtection",
+            "CalculateNativeWinOcclusion",
+        ] {
+            assert!(BROWSER_ARGS.contains(need), "少了 {need}");
+        }
+        // 只许有一个 --disable-features：Chromium 只认最后一个，写两次会互相盖掉
+        assert_eq!(BROWSER_ARGS.matches("--disable-features=").count(), 1);
+    }
 
     #[test]
     fn size_is_clamped_and_rounded() {

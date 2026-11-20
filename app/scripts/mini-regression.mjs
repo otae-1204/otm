@@ -145,8 +145,8 @@ const MINI = { width: 420, height: 420 };
 const EXPAND = { width: 1320, height: 825 };
 const MAIN = { width: 1600, height: 900 };
 
-async function open(browser, { prefs, events, viewport = MINI, query = "" }) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: 2 });
+async function open(browser, { prefs, events, viewport = MINI, query = "", dpr = 2 }) {
+  const context = await browser.newContext({ viewport, deviceScaleFactor: dpr });
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e.stack || e).split("\n")[0]));
@@ -219,6 +219,24 @@ async function snapMini(page) {
   });
 }
 
+/**
+ * 箭头（角色）的中心 vs 小地图可视区域（`.mini`）的中心。
+ * 卡片开着时窗口会长高、`.mini` 还是那个正方形，所以基准必须是 `.mini`，不是窗口。
+ */
+async function arrowCenter(page) {
+  return page.evaluate(() => {
+    const f = document.querySelector(".mini")?.getBoundingClientRect();
+    const me = document.querySelector(".mini .otm-me")?.getBoundingClientRect();
+    if (!f || !me) return null;
+    return {
+      dx: Math.round(((me.left + me.width / 2) - (f.left + f.width / 2)) * 10) / 10,
+      dy: Math.round(((me.top + me.height / 2) - (f.top + f.height / 2)) * 10) / 10,
+      dpr: devicePixelRatio,
+      frame: `${Math.round(f.width)}x${Math.round(f.height)}`,
+    };
+  });
+}
+
 /** 圆形小地图：两个标签的中心要在圆内，不然会被圆角裁掉。 */
 async function tagInsideCircle(page) {
   return page.evaluate(() => {
@@ -284,6 +302,12 @@ try {
       "自己在窗口正中间",
       s.me && Math.abs(s.me.x - s.viewport.w / 2) <= 2 && Math.abs(s.me.y - s.viewport.h / 2) <= 2,
       `自己在 ${JSON.stringify(s.me)}，窗口 ${s.viewport.w}x${s.viewport.h}`,
+    );
+    const a1 = await arrowCenter(page);
+    record(
+      "方形：箭头在小地图可视区域正中（±2px）",
+      !!a1 && Math.abs(a1.dx) <= 2 && Math.abs(a1.dy) <= 2,
+      a1 ? `偏差 ${a1.dx},${a1.dy}px  区域 ${a1.frame}  dpr ${a1.dpr}` : "没有箭头",
     );
     await shot(page, "30-mini-2f.png");
     record("没有 pageerror", errors.length === 0, errors.join(" | "));
@@ -411,6 +435,12 @@ try {
     record("没有照片就不画照片区（不留空白）", c?.ph === false, `照片区=${c?.ph}`);
     record("没照片时卡片只有标题和楼层那么高", !!c && c.h > 40 && c.h < 120, `高度=${c?.h}`);
     record("卡片整块在窗口里", !!c && c.top + c.h <= 740, `下沿=${c ? c.top + c.h : "?"}/740`);
+    const a2 = await arrowCenter(page);
+    record(
+      "开着卡片：箭头还是在小地图可视区域正中（±2px）",
+      !!a2 && Math.abs(a2.dx) <= 2 && Math.abs(a2.dy) <= 2,
+      a2 ? `偏差 ${a2.dx},${a2.dy}px  区域 ${a2.frame}  窗口 420x740` : "没有箭头",
+    );
     await shot(page, "35-mini-card.png");
     await context.close();
   }
@@ -523,6 +553,66 @@ try {
     const after = (await snapMini(miniPage)).tags[1];
     record("主窗口换预设，小地图跟着换", before === "做任务" && after === "跑刀", `${before} → ${after}`);
     await context.close();
+  }
+  // ——— 9. 150% 缩放（devicePixelRatio 1.5）：中心不能跟着缩放跑掉 ———
+  {
+    const { page, context, errors } = await open(browser, {
+      prefs: prefsWith({}, { mockSpeed: 4 }),
+      events: raidEvents(),
+      dpr: 1.5,
+    });
+    await waitMini(page);
+    await page.waitForFunction(() => document.querySelector(".mini .otm-me"), null, { timeout: 30000 });
+    await page.waitForTimeout(400);
+    const a3 = await arrowCenter(page);
+    record("150% 缩放：dpr 确实是 1.5", a3?.dpr === 1.5, `dpr=${a3?.dpr}`);
+    record(
+      "150% 缩放：箭头在小地图可视区域正中（±2px）",
+      !!a3 && Math.abs(a3.dx) <= 2 && Math.abs(a3.dy) <= 2,
+      a3 ? `偏差 ${a3.dx},${a3.dy}px  区域 ${a3.frame}` : "没有箭头",
+    );
+    await shot(page, "42-mini-dpr15.png");
+    record("150% 缩放：没有 pageerror", errors.length === 0, errors.join(" | "));
+    await context.close();
+  }
+  // ——— 10. 设置的叠加层页：管理员开关在那儿，说明只有一行 ———
+  {
+    const ctx = await browser.newContext({ viewport: MAIN, deviceScaleFactor: 1 });
+    const main = await ctx.newPage();
+    const errs = [];
+    main.on("pageerror", (e) => errs.push(String(e.stack || e).split("\n")[0]));
+    await main.addInitScript((p) => {
+      if (sessionStorage.getItem("otm.seeded")) return;
+      localStorage.setItem("otm.prefs", JSON.stringify(p));
+      sessionStorage.setItem("otm.seeded", "1");
+    }, prefsWith({}, { mockSpeed: 4 }));
+    await main.route("**/mock-events.jsonl", (route) =>
+      route.fulfill({ status: 200, contentType: "application/jsonl", body: jsonl(raidEvents()) }),
+    );
+    await main.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await main.waitForSelector(".status", { timeout: 60000 });
+    await main.locator(".tools .ib[title=\"设置\"]").click();
+    await main.locator(".tabs .tab", { hasText: "叠加层" }).click();
+    await main.waitForSelector(".sheet", { timeout: 20000 });
+    const rows = await main.evaluate(() =>
+      [...document.querySelectorAll(".sheet .row")].map((n) => n.textContent ?? ""),
+    );
+    record(
+      "叠加层页的开关都在",
+      ["启用", "大小", "不透明度", "视野范围", "形状", "朝向", "对局外隐藏"].every((k) => rows.some((t) => t.startsWith(k))),
+      rows.join(" | "),
+    );
+    // 提权那一项按主审的要求撤掉了：热键其实收得到，不是权限问题
+    record("没有提权那一项", !rows.some((t) => t.includes("管理员")), rows.join(" | "));
+    const notes = await main.evaluate(() => [...document.querySelectorAll(".sheet .note")].map((n) => n.textContent));
+    record(
+      "风险提示只有一行",
+      notes.length === 1 && notes[0].includes("官方未表态") && notes[0].length < 40,
+      notes.join(" / "),
+    );
+    await shot(main, "38-settings-overlay.png");
+    record("设置页没有 pageerror", errs.length === 0, errs.join(" | "));
+    await ctx.close();
   }
 } catch (e) {
   failed = true;

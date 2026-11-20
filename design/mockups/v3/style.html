@@ -1,0 +1,117 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{--bg:#0e1014;--glass:rgba(18,21,26,.82);--glass2:rgba(26,30,37,.9);--line:rgba(255,255,255,.07);--line2:rgba(255,255,255,.12);--text:#e9ecf1;--muted:#8b93a1;--dim:#5b626e;--accent:#f5c242;--ok:#3ccf8e;--r:12px;--font:"Noto Sans CJK SC","Noto Sans SC","Microsoft YaHei UI",sans-serif}
+*{box-sizing:border-box;margin:0}
+body{width:1600px;height:1000px;background:var(--bg);font:13px/1.4 var(--font);color:var(--text);overflow:hidden;position:relative}
+.map{position:absolute;inset:40px 0 0 0;background:url(bg-customs.png) center/cover}
+.map:after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 120px rgba(0,0,0,.45);pointer-events:none}
+.glass{background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+/* 顶栏 */
+.tb{position:absolute;inset:0 0 auto 0;height:40px;display:flex;align-items:center;background:#111318;border-bottom:1px solid var(--line);padding-left:12px}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--accent);display:grid;place-items:center;color:#14161b;font-weight:800;font-size:11px;letter-spacing:-.5px;margin-right:14px}
+.tabs{display:flex;gap:2px;height:28px;align-items:center}
+.tab{height:28px;padding:0 12px;border-radius:8px;display:flex;align-items:center;gap:7px;color:var(--muted);font-weight:500}
+.tab.on{background:rgba(245,194,66,.13);color:var(--accent)}
+.tab .k{font-size:10px;color:var(--dim);border:1px solid var(--line2);border-radius:4px;padding:0 4px;line-height:14px}
+.tab.on .k{color:rgba(245,194,66,.7);border-color:rgba(245,194,66,.35)}
+.tab.add{width:28px;padding:0;justify-content:center;font-size:16px;color:var(--dim)}
+.drag{flex:1;height:100%}
+.seg{display:flex;height:28px;padding:2px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.seg span{padding:0 12px;border-radius:6px;display:grid;place-items:center;color:var(--muted)}
+.seg span.on{background:rgba(255,255,255,.1);color:var(--text)}
+.ib{width:32px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--muted);margin-left:6px}
+.ib svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sep{width:1px;height:18px;background:var(--line2);margin:0 6px 0 10px}
+.wc{width:46px;height:40px;display:grid;place-items:center;color:var(--muted)}
+.wc svg{width:11px;height:11px;stroke:currentColor;stroke-width:1.2;fill:none}
+.wc.x{background:#c42b1c;color:#fff}
+/* 筛选 */
+.fp{position:absolute;left:16px;top:56px;width:236px;border-radius:var(--r);padding:6px}
+.row{height:34px;display:flex;align-items:center;gap:10px;padding:0 10px;border-radius:8px}
+.row img{width:18px;height:18px}
+.row .n{flex:1}
+.row .c{color:var(--dim);font-variant-numeric:tabular-nums;font-size:12px}
+.row.off{opacity:.38}
+.row.hover{background:rgba(255,255,255,.05)}
+.row.on .n{font-weight:500}
+.subs{display:flex;flex-wrap:wrap;gap:6px;padding:2px 10px 8px 38px}
+.chip{height:22px;padding:0 9px;border-radius:11px;font-size:12px;display:flex;align-items:center;gap:5px;font-weight:500}
+.hr{height:1px;background:var(--line);margin:6px 4px}
+.sw{width:30px;height:18px;border-radius:9px;background:var(--accent);position:relative}
+.sw:after{content:"";position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#14161b}
+.doc{width:18px;height:18px;border-radius:5px;border:1.6px solid #4a54ff;display:grid;place-items:center}
+.doc i{width:7px;height:9px;border:1.3px solid #fff;border-radius:1px}
+/* 楼层 */
+.fl{position:absolute;right:16px;top:50%;transform:translateY(-40%);border-radius:var(--r);padding:4px;display:flex;flex-direction:column;gap:2px}
+.fl b{width:44px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--muted);font-weight:500;position:relative}
+.fl b.on{background:var(--accent);color:#14161b;font-weight:700}
+.fl b.auto:after{content:"";position:absolute;left:4px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:var(--ok)}
+/* 状态 */
+.st{position:absolute;left:16px;bottom:16px;height:36px;border-radius:18px;display:flex;align-items:center;gap:12px;padding:0 14px 0 12px;color:var(--muted)}
+.st .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(60,207,142,.18)}
+.st b{color:var(--text);font-weight:600}
+.st .v{width:1px;height:16px;background:var(--line2)}
+.st .num{font-variant-numeric:tabular-nums}
+/* 缩放 */
+.zm{position:absolute;right:16px;bottom:16px;border-radius:var(--r);display:flex;flex-direction:column;padding:4px;gap:2px}
+.zm span{width:32px;height:30px;display:grid;place-items:center;color:var(--muted);font-size:17px;border-radius:7px}
+/* 卡片 */
+.card{position:absolute;left:880px;top:300px;width:260px;border-radius:var(--r);padding:12px 12px 10px;background:var(--glass2)}
+.card .h{display:flex;align-items:center;gap:10px}
+.card .h img{width:22px;height:22px}
+.card .h .t{flex:1;font-weight:600;font-size:14px}
+.card .h .d{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums}
+.card .m{margin-top:8px;display:flex;gap:6px;color:var(--muted);font-size:12px;align-items:center}
+.tag{background:rgba(255,255,255,.07);border-radius:5px;padding:0 6px;line-height:18px;color:var(--text);font-size:11px}
+.card:before{content:"";position:absolute;left:24px;bottom:-6px;width:12px;height:12px;background:var(--glass2);transform:rotate(45deg);border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* 自己 */
+.me{position:absolute;left:820px;top:520px;width:0;height:0}
+.me .cone{position:absolute;left:-60px;top:-110px;width:120px;height:110px;background:conic-gradient(from -25deg at 50% 100%,rgba(255,255,255,.22) 0 50deg,transparent 50deg);clip-path:polygon(50% 100%,0 0,100% 0)}
+.me svg{position:absolute;left:-13px;top:-14px;width:26px;height:28px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+</style></head><body>
+<div class="map"></div>
+<div class="me"><div class="cone"></div><svg viewBox="0 0 26 28"><path d="M13 1 24 26 13 20 2 26Z" fill="#fff" stroke="#14161b" stroke-width="1.5" stroke-linejoin="round"/></svg></div>
+
+<div class="tb">
+  <div class="logo">otm</div>
+  <div class="tabs">
+    <div class="tab on">做任务<span class="k">F1</span></div>
+    <div class="tab">跑刀<span class="k">F2</span></div>
+    <div class="tab add">+</div>
+  </div>
+  <div class="drag"></div>
+  <div class="seg"><span class="on">矢量</span><span>实景</span></div>
+  <div class="ib"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/></svg></div>
+  <div class="sep"></div>
+  <div class="wc"><svg viewBox="0 0 11 11"><path d="M0 5.5h11"/></svg></div>
+  <div class="wc"><svg viewBox="0 0 11 11"><rect x=".5" y=".5" width="10" height="10"/></svg></div>
+  <div class="wc x"><svg viewBox="0 0 11 11"><path d="M0 0l11 11M11 0 0 11"/></svg></div>
+</div>
+
+<div class="fp glass">
+  <div class="row on"><img src="../../../app/public/icons/extract_pmc.png"><span class="n">撤离点</span><span class="c">28</span></div>
+  <div class="row on hover"><img src="../../../app/public/icons/extract_transit.png"><span class="n">转移点</span><span class="c">4</span></div>
+  <div class="row on"><img src="../../../app/public/icons/lock.png"><span class="n">上锁的门</span><span class="c">37</span></div>
+  <div class="row on"><img src="../../../app/public/icons/hazard.png"><span class="n">危险区</span><span class="c">5</span></div>
+  <div class="row off"><img src="../../../app/public/icons/loose_loot.png"><span class="n">物资</span><span class="c">551</span></div>
+  <div class="row off"><img src="../../../app/public/icons/spawn_pmc.png"><span class="n">出生点</span><span class="c">278</span></div>
+  <div class="row off"><img src="../../../app/public/icons/switch.png"><span class="n">开关</span><span class="c">1</span></div>
+  <div class="row off"><img src="../../../app/public/icons/stationarygun.png"><span class="n">固定武器</span><span class="c">4</span></div>
+  <div class="row on"><span class="doc"><i></i></span><span class="n">赛季文件</span><span class="c">30</span></div>
+  <div class="subs"><span class="chip" style="background:#4a54ff;color:#fff">财务文件 15</span><span class="chip" style="background:#ff5ec4;color:#1a0d16">项目文件 15</span></div>
+  <div class="hr"></div>
+  <div class="row"><span class="n" style="color:var(--muted)">轨迹</span><span class="sw"></span></div>
+</div>
+
+<div class="fl glass"><b>4F</b><b>3F</b><b class="on">2F</b><b class="auto">地面</b><b>B1</b></div>
+<div class="zm glass"><span>+</span><span>−</span></div>
+
+<div class="card">
+  <div class="h"><img src="../../../app/public/icons/lock.png"><span class="t">上锁的门</span><span class="d">23m</span></div>
+  <div class="m"><span class="tag">2F</span>需要：宿舍 214 钥匙</div>
+</div>
+
+<div class="st glass">
+  <span class="dot"></span><b>海关 ▾</b><span>2F</span><span class="num">12:41</span><span class="v"></span><span>赛季</span><span class="v"></span>
+  <span style="display:flex;align-items:center;gap:6px"><span class="doc"><i></i></span><b class="num" style="color:#8ea0ff">3</b><span class="num">/ 40</span></span>
+</div>
+</body></html>

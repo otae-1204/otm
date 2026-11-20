@@ -15,6 +15,7 @@ use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
+mod elev;
 mod log;
 mod overlay;
 mod win;
@@ -58,6 +59,18 @@ fn main() {
             log::bridge_crates();
             log::install_panic_hook();
             log::info(format!("本机数据目录 {}", local.display()));
+            // 热键在游戏里收不到时，先看这一行：游戏是管理员而 otm 不是，RegisterHotKey 就收不到
+            log::info(format!(
+                "权限：{}（程序 {}）",
+                if elev::is_elevated() {
+                    "管理员"
+                } else {
+                    "普通用户"
+                },
+                std::env::current_exe()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|_| "?".into())
+            ));
 
             let watcher = Watcher::start(WatchOptions::default());
             log::info("日志监听已开始");

@@ -6,7 +6,7 @@
 //
 // 文字只有三处：下一个目标的距离（还没有目标系统，先不显示）、楼层、预设名。
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { layerName } from "../data/annotations";
 import { layerOfPoint } from "../data/floors";
 import { useSeason } from "../data/season/store";
@@ -23,6 +23,30 @@ import { MiniMap } from "./MiniMap";
 
 /** 空框这件事只往日志里写一次（它会一直重画）。 */
 let emptyLogged = false;
+
+/**
+ * 小地图真正能看见的那一块（`.mini` 的矩形）。
+ *
+ * 不能用窗口尺寸代替：开着详情卡片时外壳把窗口长高了，`.mini` 还是那个正方形，
+ * 拿窗口高度去算中心，地图就会整体往下偏半个卡片高，自己的箭头也就离开了中心。
+ */
+function useFrameSize(el: HTMLDivElement | null, fallback: { w: number; h: number }) {
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
+  useEffect(() => {
+    if (!el) return;
+    // clientWidth/Height 是边框里面那一圈：绝对定位的子弹层就是按它算的
+    const measure = () => {
+      const { clientWidth: w, clientHeight: h } = el;
+      if (w < 1 || h < 1) return;
+      setBox((b) => (b && Math.abs(b.w - w) < 0.5 && Math.abs(b.h - h) < 0.5 ? b : { w, h }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [el]);
+  return box ?? fallback;
+}
 
 /** 外壳发过来的窗口状态；浏览器里没有外壳，得到 null。 */
 function useOverlayWindow(): OverlayWindowState | null {
@@ -42,6 +66,43 @@ function useOverlayWindow(): OverlayWindowState | null {
     };
   }, []);
   return state;
+}
+
+/**
+ * 心跳：每 5 秒把「页面还活着吗」写一行日志。
+ *
+ * WebView2 会把被判成被遮挡、在后台的窗口暂停重绘和计时器。游戏全屏盖着小地图时，按键外壳
+ * 照样收到、窗口也照样显示成功，画面却停在最后一帧——只有这里能分出是不是这一回事。
+ * 数值没变就不写，不刷屏。
+ */
+function useHeartbeat(lastPosAt: { current: number }) {
+  useEffect(() => {
+    if (!inTauri) return;
+    let frames = 0;
+    let raf = 0;
+    const tick = () => {
+      frames += 1;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    let seenFrames = 0;
+    let seenVis = document.visibilityState;
+    const id = window.setInterval(() => {
+      const vis = document.visibilityState;
+      if (frames === seenFrames && vis === seenVis) return;
+      const ago =
+        lastPosAt.current > 0
+          ? `${Math.round((Date.now() - lastPosAt.current) / 1000)}s 前`
+          : "还没收到";
+      logToShell(`叠加层：心跳 帧+${frames - seenFrames} 可见性=${vis} 上次位置 ${ago}`);
+      seenFrames = frames;
+      seenVis = vis;
+    }, 5000);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearInterval(id);
+    };
+  }, [lastPosAt]);
 }
 
 /** 外壳转过来的热键：预设轮换、详情卡片。窗口那几个（显示、展开、调整）外壳自己做了。 */
@@ -65,10 +126,15 @@ export function MiniApp() {
   const season = useSeason();
   const size = useWindowSize();
   const win = useOverlayWindow();
+  // 回调 ref：空框和真地图是两个元素，换的时候要让量尺寸的那一套跟着换
+  const [frameEl, setFrameEl] = useState<HTMLDivElement | null>(null);
+  const frameRef = useCallback((n: HTMLDivElement | null) => setFrameEl(n), []);
   const ov = prefs.overlay;
 
   // 展开的大地图比小地图宽，用窗口形状认（外壳展开时把它改成 1320×825）
   const expanded = size.w > size.h + 40;
+  // 地图按 `.mini` 那块来铺：中心、视野、转动都只用它
+  const frame = useFrameSize(frameEl, { w: size.w, h: size.w });
 
   // 叠加层只认玩家所在的那张图：主窗口手选地图只是浏览，不该把叠加层带走
   const { meta, upstream } = useMapResolution(state, { ...prefs, manualMap: null }, data);
@@ -77,6 +143,13 @@ export function MiniApp() {
 
   const inRaid = !!state.raid?.started;
   const pos = state.position;
+  // 最近一次收到位置的时间：心跳日志要带着它，才看得出地图有没有在更新
+  const posAt = useRef(0);
+  const posKey = pos ? `${pos.x},${pos.y},${pos.yaw}` : "";
+  useEffect(() => {
+    if (posKey) posAt.current = Date.now();
+  }, [posKey]);
+  useHeartbeat(posAt);
   const [now, setNow] = useState(() => Date.now());
   // ?card=1 直接带着卡片打开：回归脚本要看卡片，没有外壳按不了那个热键
   const [detailOpen, setDetailOpen] = useState(
@@ -142,6 +215,8 @@ export function MiniApp() {
 
   // 卡片会占窗口下面一块，让外壳把窗口长出来。高度是量出来的：有照片和没照片差一大截
   const cardRef = useRef<HTMLDivElement | null>(null);
+  // 最近一次量到的卡片高度：日志里要带上它，才看得出卡片到底弹没弹
+  const cardH = useRef(0);
   useEffect(() => {
     if (!inTauri) return;
     if (!detailOpen || !nearest) {
@@ -157,7 +232,12 @@ export function MiniApp() {
     if (!el) return;
     const report = () => {
       const h = Math.ceil(el.getBoundingClientRect().height);
-      if (h > 0) void overlayInvoke("overlay_set_detail", { open: true, height: h });
+      if (h <= 0) return;
+      if (h !== cardH.current) {
+        cardH.current = h;
+        logToShell(`叠加层：详情卡片画出来了，高 ${h}`);
+      }
+      void overlayInvoke("overlay_set_detail", { open: true, height: h });
     };
     report();
     // 最近的那个标注换了，卡片高度可能跟着变
@@ -176,7 +256,14 @@ export function MiniApp() {
 
   useOverlayHotkeys((action) => {
     if (action === "preset") cyclePreset();
-    else if (action === "detail") setDetailOpen((v) => !v);
+    else if (action === "detail") {
+      const next = !detailOpen;
+      // 实机上按键收到了、窗口也说自己显示成功了，可屏幕上什么都没有；这行能对上界面的视角
+      logToShell(
+        `热键 detail：卡片${next ? "开" : "关"}，卡片高 ${cardH.current > 0 ? cardH.current : "还没量过"}，对局${inRaid ? "里" : "外"}`,
+      );
+      setDetailOpen(next);
+    }
   });
 
   const preset = prefs.presets.find((x) => x.id === prefs.activePresetId) ?? prefs.presets[0] ?? null;
@@ -194,6 +281,7 @@ export function MiniApp() {
     return (
       <div className={`mini-root${expanded ? " big" : ""}`}>
         <div
+          ref={frameRef}
           className={`mini empty${expanded ? " big" : ""}${!expanded && ov.shape === "circle" ? " circle" : ""}${
             win?.adjust ? " adjust" : ""
           }`}
@@ -211,6 +299,7 @@ export function MiniApp() {
   return (
     <div className={`mini-root${expanded ? " big" : ""}`}>
       <div
+        ref={frameRef}
         className={`mini${expanded ? " big" : ""}${!expanded && ov.shape === "circle" ? " circle" : ""}${
           win?.adjust ? " adjust" : ""
         }`}
@@ -230,8 +319,8 @@ export function MiniApp() {
           stale={stale}
           rot={rot}
           range={ov.rangeMeters}
-          w={size.w}
-          h={size.h}
+          w={frame.w}
+          h={frame.h}
           expanded={expanded}
         />
         {/* 三处文字：左上下一个目标的距离（还没有目标系统）、左下楼层、右下预设名 */}

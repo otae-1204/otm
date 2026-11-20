@@ -21,9 +21,15 @@ serde_json = "1"
 # tao / wry / tauri 自己的警告也进同一个日志文件（比如 PostMessage 失败）
 log = "0.4"
 
-# 叠加层窗口的样式直接对 HWND 做：实机上 tao 的 show / 穿透没落到窗口上
+# 叠加层窗口的样式直接对 HWND 做：实机上 tao 的 show / 穿透没落到窗口上。
+# Security / Threading 是用来读进程权限的（只写进日志，看两边权限对不对得上）。
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }
 
 # 发布版：小一点、快一点。界面在 WebView 里跑，Rust 这边只做监听，优化级别不用拉满。
 [profile.release]
